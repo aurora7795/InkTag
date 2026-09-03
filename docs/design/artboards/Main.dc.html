@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --bg:#F3F3F7;--surface:#FFFFFF;--header:#ECECEF;--border:#D1D1D6;--cardborder:#E0E0E6;
+      --ink:#1C1C1E;--ink2:#3A3A3C;--muted:#8E8E93;--accent:#007ACC;
+      --grid-alt:#F8F8FA;--gridline:#E5E5EA;--dirty:#E6F4EA;
+      --rail:#ECECEF;--statusbg:#F8FAFC;--status-muted:#64748B;--status-border:#E2E8F0;--btn-outline:#D1D5DB;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:12px;-webkit-font-smoothing:antialiased}
+    .app{width:1440px;height:900px;display:flex;flex-direction:column;background:var(--bg)}
+    .menubar{height:26px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:0 12px;color:var(--ink2)}
+    .toolbar{height:44px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px}
+    .btn{height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);white-space:nowrap}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.ghost{border-color:transparent;background:transparent}
+    .path{flex:1;height:28px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);display:flex;align-items:center;padding:0 10px;color:var(--muted);min-width:0}
+    .body{flex:1;display:flex;min-height:0}
+
+    .rail{width:224px;background:var(--rail);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:10px 0;overflow:hidden}
+    .rail .sec{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 16px 4px}
+    .rail .row{height:28px;display:flex;align-items:center;gap:8px;padding:0 16px;font-size:12px;color:var(--ink2)}
+    .rail .row.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+    .rail .row .ct{margin-left:auto;font-size:11px;color:var(--muted);background:var(--gridline);border-radius:9px;padding:0 6px;min-width:20px;text-align:center}
+    .rail .row.on .ct{background:#DCEBF6;color:#005A99}
+    .rail .row .chev{width:12px;height:12px}
+    .rail .child{padding-left:34px}
+
+    .center{flex:1;display:flex;flex-direction:column;min-width:0}
+    .crumbs{height:34px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;color:var(--muted)}
+    .crumbs b{color:var(--ink)}
+    .search{margin-left:auto;height:26px;width:220px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--muted)}
+    .grid{flex:1;display:flex;flex-direction:column;background:var(--surface);min-width:0}
+    .ghead,.grow{display:grid;grid-template-columns:2.2fr 1.4fr .5fr 1.5fr .6fr 1.2fr .8fr}
+    .ghead{height:30px;border-bottom:1px solid var(--border);background:var(--grid-alt)}
+    .ghead>div{display:flex;align-items:center;padding:0 10px;font-weight:600;font-size:11px;color:var(--ink2);border-right:1px solid var(--gridline)}
+    .grow{height:30px;border-bottom:1px solid var(--gridline)}
+    .grow:nth-child(even){background:var(--grid-alt)}
+    .grow.dirty{background:var(--dirty)}
+    .grow>div{display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--ink2);border-right:1px solid var(--gridline);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .wf{height:9px;border-radius:3px;background:var(--gridline);width:65%}
+    .badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#FDE2E2;color:#A12A2A}
+
+    .inspector{width:340px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+    .itabs{height:34px;border-bottom:1px solid var(--border);display:flex;gap:2px;padding:4px 8px 0}
+    .itab{height:30px;padding:0 12px;display:flex;align-items:center;color:var(--muted);border-bottom:2px solid transparent}
+    .itab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+    .ipad{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .cover{width:112px;height:168px;border-radius:6px;background:var(--gridline);border:1px solid var(--cardborder);align-self:center}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+    .field .in{height:26px;border:1px solid var(--btn-outline);border-radius:5px;background:var(--surface)}
+
+    .statusbar{height:28px;background:var(--statusbg);border-top:1px solid var(--status-border);display:flex;align-items:center;gap:16px;padding:0 12px;font-size:11px;color:var(--status-muted)}
+    .frame-label{position:absolute;left:0;top:-26px;font-size:13px;font-weight:700;color:#1C1C1E}
+    a{color:#007ACC}a:hover{color:#005A99}
+  </style>
+</helmet>
+
+<div class="app">
+    <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span></div>
+    <div class="toolbar">
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open Folder</div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M5 3h11l3 3v15H5z"/><path d="M9 3v6h6"/></svg>Save All (3)</div>
+      <div class="path">/home/martin/Comics</div>
+      <div class="btn primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><path d="M6 17v4M4 19h4M13 3l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></svg>Auto-Tag</div>
+      <div class="btn">Series Wizard</div>
+    </div>
+
+    <div class="body">
+      <div class="rail">
+        <div class="sec">Library</div>
+        <div class="row on">All comics <span class="ct">312</span></div>
+        <div class="row">Untagged <span class="ct">47</span></div>
+        <div class="row">Modified <span class="ct">3</span></div>
+        <div class="row">Read errors <span class="ct" style="background:#FDE2E2;color:#A12A2A">2</span></div>
+
+        <div class="sec">Browse</div>
+        <div class="row"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>By publisher</div>
+        <div class="row"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>By series</div>
+        <div class="row child">Y: The Last Man <span class="ct">60</span></div>
+        <div class="row child">Preacher <span class="ct">66</span></div>
+        <div class="row child">Sandman <span class="ct">75</span></div>
+        <div class="row child" style="color:var(--muted)">&hellip; 41 series</div>
+
+        <div class="sec">Komga</div>
+        <div class="row"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#137333" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Vertigo &nbsp;<span style="font-size:10px;color:var(--muted)">synced</span></div>
+        <div class="row" style="margin-top:auto;color:var(--muted)"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Settings</div>
+      </div>
+
+      <div class="center">
+        <div class="crumbs">Library <span>/</span> <b>All comics</b> <span>&middot; 312 items &middot; sorted by Series</span>
+          <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search&hellip;</div>
+        </div>
+        <div class="grid">
+          <div class="ghead"><div>File Name</div><div>Series</div><div>#</div><div>Title</div><div>Year</div><div>Writer</div><div>Tagged</div></div>
+          <div class="grow"><div>100 Bullets #001.cbz</div><div>100 Bullets</div><div>1</div><div>First Shot, Last Call</div><div>1999</div><div>Brian Azzarello</div><div></div></div>
+          <div class="grow dirty"><div>Fables_v1_001.cbz</div><div>Fables</div><div>1</div><div class="wf" style="background:#B7E4C7"></div><div>2002</div><div>Bill Willingham</div><div></div></div>
+          <div class="grow"><div>preacher-01.cbr</div><div>Preacher</div><div>1</div><div>Gone to Texas</div><div>1995</div><div>Garth Ennis</div><div></div></div>
+          <div class="grow"><div>Sandman_017.cbz</div><div class="wf"></div><div>17</div><div class="wf" style="width:50%"></div><div class="wf" style="width:40%"></div><div class="wf"></div><div><span class="badge">UNTAGGED</span></div></div>
+          <div class="grow"><div>Transmetropolitan #12.cbz</div><div>Transmetropolitan</div><div>12</div><div>Freeze Me&hellip;</div><div>1998</div><div>Warren Ellis</div><div></div></div>
+          <div class="grow"><div>Y The Last Man #001.cbz</div><div>Y: The Last Man</div><div>1</div><div>Unmanned</div><div>2002</div><div>Brian K. Vaughan</div><div></div></div>
+          <div class="grow dirty"><div>Y The Last Man #002.cbz</div><div>Y: The Last Man</div><div>2</div><div class="wf" style="background:#B7E4C7"></div><div>2002</div><div>Brian K. Vaughan</div><div></div></div>
+          <div class="grow"><div>scan_099.cbz</div><div class="wf" style="width:30%"></div><div class="wf" style="width:55%"></div><div class="wf" style="width:45%"></div><div class="wf" style="width:50%"></div><div class="wf" style="width:35%"></div><div><span class="badge">UNTAGGED</span></div></div>
+          <div class="grow" style="flex:1;background:var(--surface);border-bottom:none"><div style="color:var(--muted);border-right:none">&hellip; 304 more (virtualized)</div></div>
+        </div>
+      </div>
+
+      <div class="inspector">
+        <div class="itabs"><div class="itab on">Details</div><div class="itab">Bulk Tools</div></div>
+        <div class="ipad">
+          <div class="cover"></div>
+          <div class="field"><label>Series</label><div class="in"></div></div>
+          <div style="display:flex;gap:10px">
+            <div class="field" style="flex:1"><label>Number</label><div class="in"></div></div>
+            <div class="field" style="flex:1"><label>Year</label><div class="in"></div></div>
+          </div>
+          <div class="field"><label>Title</label><div class="in"></div></div>
+          <div class="field"><label>Writer</label><div class="in"></div></div>
+          <div style="font-size:11px;color:var(--muted)">&hellip; 32 more fields</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar"><span>Showing 312 of 312 &middot; 47 untagged</span><span style="margin-left:auto">Komga: connected</span><span>InkTag v0.13.0</span></div>
+  </div>
+
+</x-dc>
+</body>
+</html>
