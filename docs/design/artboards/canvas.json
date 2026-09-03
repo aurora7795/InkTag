@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Current.dc.html", "x": 0, "y": 0, "w": 1440, "h": 910, "title": "Current layout" },
+    { "file": "Main.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 910, "title": "A · Library Rail" },
+    { "file": "CoverWall.dc.html", "x": 0, "y": 1120, "w": 1440, "h": 910, "title": "B · Cover Wall" },
+    { "file": "Dashboard.dc.html", "x": 1560, "y": 1120, "w": 1440, "h": 910, "title": "C · Health Dashboard" },
+    { "file": "TaggingWorkspace.dc.html", "x": 0, "y": 2240, "w": 1440, "h": 910, "title": "D · Tagging Workspace" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -230, "w": 1400, "text": "InkTag — 5 layout directions, same visual language (colors/type lifted from App.axaml), different information architecture.\n\nCurrent  — spreadsheet + right inspector + modal dialogs.  Baseline.\nA · Library Rail  — add a left nav rail: smart-lists (Untagged / Modified / Errors) always visible, browse by publisher/series without typing.  Lowest-risk evolution; costs ~220px of width.\nB · Cover Wall  — covers replace rows; status shows as ribbons/outlines; edit in a side drawer.  Best for “which of these needs work” at a glance; weak for bulk column edits.\nC · Health Dashboard  — land on a library-health overview (tiles, % tagged, needs-attention queue, big actions); grid is one tab away.  Reframes the app around the goal; adds a screen to navigate.\nD · Tagging Workspace  — the scrape/match dialog becomes a full screen you work a queue in: local cover + field diff + candidates + Apply&Next.  Turns tagging into a fast loop; only useful while actively tagging." }
+  ],
+  "launch": { "view": "canvas" }
+}
