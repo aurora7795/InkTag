@@ -147,6 +147,7 @@ Tests connectivity and authentication against a Komga media server and lists its
 - **Parameters**:
   - `serverUrl` (string, optional): Server URL override (else `KOMGA_SERVER_URL` / settings).
   - `apiKey` (string, optional): API key override.
+- **Transient failure retries**: [`KomgaClient`](core_editor_api.md) retries a connection attempt up to 2 extra times (3 total, 750ms apart) when it hits a transient network error (`HttpRequestException`, `SocketException`, or an `IOException` wrapping a `SocketException` — e.g. "No route to host" during a brief reachability blip on the machine running the MCP host). Non-transient outcomes (HTTP 401/403, DNS failure, timeout beyond the underlying `HttpClient`'s own 15s timeout) are not retried and surface immediately.
 
 #### 17. `sync_komga_book_or_series`
 Triggers targeted Komga cache invalidation / re-analysis for a local file or folder, with optional StoryArc → Collection sync.
