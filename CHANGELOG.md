@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-09-15
+
 ### Added
 - **Review Remediation Plan**: Added [`docs/review-remediation-plan-2026-09-01.md`](docs/review-remediation-plan-2026-09-01.md) — a phased, branch-mapped implementation plan for the findings of the `main` @ `79cb9f5` whole-codebase review (3 high, 8 medium, 9 low), covering MCP safety, stdio-stream purity, `HttpClient` lifecycle, archive-repack structure preservation, and on-disk persistence durability. Phases 1–3 are complete (see below).
 
