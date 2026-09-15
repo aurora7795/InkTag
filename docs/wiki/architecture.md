@@ -117,5 +117,6 @@ Velopack auto-updater system logs are stored in the parent `InkTag` directory (e
 ### Diagnostics & Auto-Updater Diagnostics
 - `UpdateService` logs update check requests, GitHub release queries, rate limiting status, and download progress.
 - `UpdateService.CheckForUpdatesAsync()` returns structured `UpdateCheckResult` detailing status (`UpdateAvailable`, `UpToDate`, `UninstalledDevBuild`, or `Failed`).
+- **Install detection**: both the update-check step and the download/apply step gate on `UpdateService.IsInstalledMode(manager)`, not Velopack's own `manager.IsInstalled`. Velopack's native property only recognizes a Squirrel-style Windows install; `IsInstalledMode` additionally recognizes a macOS `.app` bundle (`sq.version` next to the executable or under `../Resources/`) and a Linux AppImage (`$APPIMAGE` env var set), which is what lets in-place Velopack updates run on those platforms instead of always falling back to opening the GitHub Releases page in a browser.
 - Running uninstalled/dev builds explicitly logs warnings and displays *"Update check unavailable (Uninstalled dev build)"* to prevent confusion with failed network checks.
 
