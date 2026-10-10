@@ -110,7 +110,7 @@
           <DataGrid.Columns>
             
             <!-- Checkbox Selection -->
-            <DataGridTemplateColumn Header="Include" Width="70" MinWidth="70">
+            <DataGridTemplateColumn Header="Include" Width="70" MinWidth="70" SortMemberPath="IsSelected">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <CheckBox IsChecked="{Binding IsSelected}" Click="ItemCheckBox_Click" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -119,7 +119,7 @@
             </DataGridTemplateColumn>
 
             <!-- Status Badge Column -->
-            <DataGridTemplateColumn Header="Status" Width="110" MinWidth="85">
+            <DataGridTemplateColumn Header="Status" Width="110" MinWidth="85" SortMemberPath="Status">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Background="{Binding StatusBadgeBackground}" CornerRadius="3" Padding="6,3"
@@ -132,7 +132,7 @@
             </DataGridTemplateColumn>
 
             <!-- Local Cover Thumbnail -->
-            <DataGridTemplateColumn Header="Local Cover" Width="95" MinWidth="95">
+            <DataGridTemplateColumn Header="Local Cover" Width="95" MinWidth="95" CanUserSort="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Width="40" Height="58" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="3" ClipToBounds="True" Margin="4"
@@ -156,7 +156,7 @@
             </DataGridTemplateColumn>
 
             <!-- Archive File & Parsed Query -->
-            <DataGridTemplateColumn Header="Archive File / Detected Query" Width="*" MinWidth="220">
+            <DataGridTemplateColumn Header="Archive File / Detected Query" Width="*" MinWidth="220" SortMemberPath="Filename">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <StackPanel VerticalAlignment="Center" Margin="8,0">
@@ -191,7 +191,7 @@
             </DataGridTemplateColumn>
 
             <!-- Matched ComicVine Series & Issue Title -->
-            <DataGridTemplateColumn Header="ComicVine Match" Width="1.4*" MinWidth="200">
+            <DataGridTemplateColumn Header="ComicVine Match" Width="1.4*" MinWidth="200" SortMemberPath="MatchedSeriesName">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <StackPanel VerticalAlignment="Center" Margin="8,0">
@@ -208,7 +208,7 @@
             </DataGridTemplateColumn>
 
             <!-- Remote ComicVine Cover Thumbnail -->
-            <DataGridTemplateColumn Header="Remote Cover" Width="95" MinWidth="95">
+            <DataGridTemplateColumn Header="Remote Cover" Width="95" MinWidth="95" CanUserSort="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Width="40" Height="58" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="3" ClipToBounds="True" Margin="4"
@@ -232,7 +232,7 @@
             </DataGridTemplateColumn>
 
             <!-- Match Confidence Meter -->
-            <DataGridTemplateColumn Header="Confidence" Width="105" MinWidth="95">
+            <DataGridTemplateColumn Header="Confidence" Width="105" MinWidth="95" SortMemberPath="MatchConfidence">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2"
@@ -248,7 +248,7 @@
             </DataGridTemplateColumn>
 
             <!-- Visual Similarity Badge -->
-            <DataGridTemplateColumn Header="Cover Match" Width="110" MinWidth="105">
+            <DataGridTemplateColumn Header="Cover Match" Width="110" MinWidth="105" SortMemberPath="VisualSimilarity">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Background="{Binding VisualBadgeBackground}" CornerRadius="3" Padding="6,2"
@@ -262,7 +262,7 @@
             </DataGridTemplateColumn>
 
             <!-- Change Match Action -->
-            <DataGridTemplateColumn Header="Action" Width="110" MinWidth="90">
+            <DataGridTemplateColumn Header="Action" Width="110" MinWidth="90" CanUserSort="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Button Content="Tweak..." Click="ChangeMatch_Click" Padding="8,4" CornerRadius="4"

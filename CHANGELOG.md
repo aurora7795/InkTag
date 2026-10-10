@@ -9,11 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.14.0] - 2026-10-11
+
+### Added
+- **Bulk Auto-Tag Column Sorting**: Click the `Include`, `Status`, `Archive File / Detected Query`, `ComicVine Match`, `Confidence`, or `Cover Match` headers in the Bulk Scrape queue to sort the table (click again to reverse). Cover thumbnail and `Action` columns are not sortable.
+
+### Changed
+- **Avalonia 12 Upgrade**: Upgraded `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent` to 12.1.4, `Avalonia.Controls.DataGrid` to 12.1.2, and `Tmds.DBus.Protocol` to 0.95.1 (required by Avalonia 12's Linux backend). Kept reflection bindings as the default via `AvaloniaUseCompiledBindingsByDefault=false`, and replaced the obsolete `TextBox.Watermark` with `PlaceholderText`.
+- **Package Updates**: Bumped `SharpCompress` to 0.50.5, `Velopack` to 1.2.161, `Microsoft.Extensions.Hosting` to 10.0.12, and `ModelContextProtocol` to 2.2.0.
+
+### Fixed
+- **File Name Column Width**: The main grid `File Name` column now uses the full column width (the name previously clipped at a fixed 155px) and keeps the CBR badge right-aligned.
+
 ### Security
 - **Dependency Vulnerability Fixes**: Upgraded `SixLabors.ImageSharp` from 3.1.7 to 4.1.3, resolving three high-severity and three moderate-severity advisories flagged by NuGet audit (`NU1903`).
 
-### Changed
-- **Package Updates**: Bumped `SharpCompress` to 0.50.5, `Velopack` to 1.2.161, `Microsoft.Extensions.Hosting` to 10.0.12, and `ModelContextProtocol` to 2.2.0.
+---
+
 ## [0.13.1] - 2026-09-15
 
 ### Added
