@@ -15,7 +15,7 @@ The solution comprises a domain library (`InkTag.Core`), an AI-agent-friendly CL
 * **🌐 ComicVine Metadata Scraper & Live Matching:** Query ComicVine for issue and volume metadata, perform side-by-side field-by-field diff comparison, and apply updates using customizable merge policies (*Fill Missing Only* vs. *Overwrite All*).
 * **🧙 Interactive Series Search Wizard:** 2-step wizard workflow to search series volumes by title, publisher, and year, browse issues in natural numerical order (`#1, #2... #10, #11`), and 1-click apply metadata.
 * **🎯 Year-Weighted Matching & Volume-First Resolution:** Publication year alignment heavily influences candidate ranking with severe cross-decade penalties (`-40%`) to eliminate false volume matches.
-* **🤖 AI Agent Native & Official MCP SDK:** Built-in Model Context Protocol server (`InkTag.Mcp`) using the official **`ModelContextProtocol` C# SDK** (`v2.1.0`) over `stdio`, exposing automated scraping, visual similarity metrics, schema validation, dynamic JSON patching, and bulk renaming to AI assistants (Claude Desktop, Cursor, Antigravity).
+* **🤖 AI Agent Native & Official MCP SDK:** Built-in Model Context Protocol server (`InkTag.Mcp`) using the official **`ModelContextProtocol` C# SDK** (`v2.2.0`) over `stdio`, exposing automated scraping, visual similarity metrics, schema validation, dynamic JSON patching, and bulk renaming to AI assistants (Claude Desktop, Cursor, Antigravity).
 * **🖥️ Cross-Platform MenuBar & NativeMenu:** Full `File`, `Edit`, `View`, `Tools`, and `Help` navigation with hotkeys (`Ctrl+O`, `Ctrl+S`, `Ctrl+M`, `F5`, `Ctrl+Q`) and native macOS screen top MenuBar integration.
 * **⚡ Velopack Auto-Updater & Fallback:** Seamless auto-updates via Velopack with GitHub Releases API polling fallback for portable builds (Linux AppImages / macOS DMGs).
 * **🛡️ Archive Security & Atomic Swapping:** Strict ZipSlip defense, path containment validation, and atomic archive repacking with automatic `.bak` safety rollbacks.
@@ -86,7 +86,7 @@ Because pre-built `.dmg` releases are open-source:
 ## 🤖 AI Agent & MCP Integration
 
 ### 1. Model Context Protocol (MCP) Server
-InkTag includes a high-performance, official **`ModelContextProtocol` C# SDK** (`v2.1.0`) server that connects AI assistants directly to your comic library for automated cataloging, auditing, visual verification, and Komga sync.
+InkTag includes a high-performance, official **`ModelContextProtocol` C# SDK** (`v2.2.0`) server that connects AI assistants directly to your comic library for automated cataloging, auditing, visual verification, and Komga sync.
 
 #### 🚀 Quick-Start Configuration
 Add the configuration block below to your AI client (**OpenClaw**, **Claude Desktop**, **Cursor**, **Windsurf**, **Cline**, or **Antigravity**):
@@ -270,7 +270,7 @@ bool isMatch = PerceptualHashService.IsVisualMatch(coverHash, onlineCoverHash, t
 * **[x] Perceptual Cover Hashing & Visual Matching (`v0.8.0`):** 64-bit `dHash` image fingerprinting, live cover match badging (`👁 XX% Cover Match`), and Visual Override matching for unorganized files.
 * **[x] Series Search Wizard (`v0.7.0`):** 2-step volume and issue search wizard with natural numerical ordering (`1, 2, 3... 10, 11`) and quick apply workflows.
 * **[x] ComicVine Metadata Scraper System:** Built-in provider with caching, rate-limited HTTP client, field-by-field diff comparison, and selective merge policies.
-* **[x] Official Tier-1 MCP C# SDK Integration:** Powered by the official `ModelContextProtocol` C# SDK (`v2.1.0`) with declarative tools and rich visual verification returns.
+* **[x] Official Tier-1 MCP C# SDK Integration:** Powered by the official `ModelContextProtocol` C# SDK (`v2.2.0`) with declarative tools and rich visual verification returns.
 * **[x] Cross-Platform MenuBar & NativeMenu:** Menu and toolbar navigation with hotkeys and macOS system menu integration.
 * **[x] Velopack Auto-Updater & Portable Fallback:** Automated cross-platform updates for Windows, macOS, and Linux AppImages.
 * **[x] Archive Security Hardening:** Strict ZipSlip defense and atomic file swapping with `.bak` rollbacks.

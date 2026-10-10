@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependency Vulnerability Fixes**: Upgraded `SixLabors.ImageSharp` from 3.1.7 to 4.1.3, resolving three high-severity and three moderate-severity advisories flagged by NuGet audit (`NU1903`).
+
+### Changed
+- **Package Updates**: Bumped `SharpCompress` to 0.50.5, `Velopack` to 1.2.161, `Microsoft.Extensions.Hosting` to 10.0.12, and `ModelContextProtocol` to 2.2.0.
+
 ### Added
 - **Bulk Auto-Tag CBR ➔ CBZ Indicators & Badges**: Displayed dynamic amber `CBR ➔ CBZ` badges in the `Archive File / Detected Query` column of the Bulk Scrape queue with explanatory conversion tooltips.
 - **Bulk Auto-Tag Pre-Save Confirmation Dialog**: Added `BulkApplyConfirmWindow` which prompts the user before applying bulk metadata changes whenever CBR repacking or automated file renaming (`AlsoRenameFiles`) is enabled, showing a live summary of all converted and renamed files.
