@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -82,6 +83,64 @@ public class KomgaClientTests
 
         bool success = await client.TestConnectionAsync();
         Assert.True(success);
+    }
+
+    private class TransientThenSuccessHandler : HttpMessageHandler
+    {
+        private int _attempts;
+        public int Attempts => _attempts;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _attempts++;
+            if (_attempts == 1)
+            {
+                throw new HttpRequestException("No route to host", new System.Net.Sockets.SocketException((int)SocketError.HostUnreachable));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"id\": \"user-1\"}", System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Fact]
+    public async Task KomgaClient_TestConnectionAsync_RetriesAfterTransientNetworkFailure()
+    {
+        using var mockHandler = new TransientThenSuccessHandler();
+        using var httpClient = new HttpClient(mockHandler);
+        using var client = new KomgaClient("http://localhost:25600", apiKey: "test-token", httpClient: httpClient);
+
+        bool success = await client.TestConnectionAsync();
+
+        Assert.True(success);
+        Assert.Equal(2, mockHandler.Attempts);
+    }
+
+    private class AlwaysUnreachableHandler : HttpMessageHandler
+    {
+        public int Attempts { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Attempts++;
+            throw new HttpRequestException("No route to host", new System.Net.Sockets.SocketException((int)SocketError.HostUnreachable));
+        }
+    }
+
+    [Fact]
+    public async Task KomgaClient_TestConnectionAsync_GivesUpAfterMaxRetries()
+    {
+        using var mockHandler = new AlwaysUnreachableHandler();
+        using var httpClient = new HttpClient(mockHandler);
+        using var client = new KomgaClient("http://localhost:25600", apiKey: "test-token", httpClient: httpClient);
+
+        bool success = await client.TestConnectionAsync();
+
+        Assert.False(success);
+        // Fails on the first endpoint probed (v2/users/me) each time, for the initial try plus 2 retries.
+        Assert.Equal(3, mockHandler.Attempts);
     }
 
     [Fact]

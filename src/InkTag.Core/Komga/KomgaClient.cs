@@ -21,6 +21,16 @@ public class KomgaClient : IDisposable
     private readonly string _serverUrl;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    // Guards against transient reachability blips (e.g. a client-side sandbox/network
+    // stack that isn't fully up yet when the first request goes out) so a single
+    // "no route to host" doesn't get surfaced as a hard connection failure.
+    private const int MaxConnectionRetries = 2;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(750);
+
+    private static bool IsTransientConnectionFailure(Exception ex) =>
+        ex is HttpRequestException or System.Net.Sockets.SocketException
+            || ex is IOException { InnerException: System.Net.Sockets.SocketException };
+
     public KomgaClient(AppSettingsService settingsService, HttpClient? httpClient = null)
         : this(
             settingsService.GetEffectiveKomgaServerUrl(),
@@ -116,6 +126,19 @@ public class KomgaClient : IDisposable
     {
         if (!IsConfigured) return false;
 
+        for (int attempt = 1; attempt <= MaxConnectionRetries + 1; attempt++)
+        {
+            bool? result = await TryTestConnectionOnceAsync(attempt, ct);
+            if (result.HasValue) return result.Value;
+
+            await Task.Delay(RetryDelay, ct);
+        }
+
+        return false;
+    }
+
+    private async Task<bool?> TryTestConnectionOnceAsync(int attempt, CancellationToken ct)
+    {
         try
         {
             // 1. Try v2/users/me (Modern Komga)
@@ -171,6 +194,11 @@ public class KomgaClient : IDisposable
                 string? mediaType = claimResponse.Content.Headers.ContentType?.MediaType;
                 return mediaType == null || !mediaType.Contains("html", StringComparison.OrdinalIgnoreCase);
             }
+        }
+        catch (Exception ex) when (IsTransientConnectionFailure(ex) && attempt <= MaxConnectionRetries)
+        {
+            AppLogger.LogWarning($"[KomgaClient] Connection attempt {attempt} to '{_serverUrl}' failed transiently ({ex.Message}); retrying...");
+            return null;
         }
         catch (Exception ex)
         {
@@ -416,22 +444,35 @@ public class KomgaClient : IDisposable
 
     private async Task<T?> GetJsonSafeAsync<T>(string endpoint, CancellationToken ct)
     {
-        using var response = await _httpClient.GetAsync(endpoint, ct);
-        if (!response.IsSuccessStatusCode)
+        for (int attempt = 1; attempt <= MaxConnectionRetries + 1; attempt++)
         {
-            AppLogger.LogWarning($"[KomgaClient] GET '{endpoint}' returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
-            return default;
+            try
+            {
+                using var response = await _httpClient.GetAsync(endpoint, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    AppLogger.LogWarning($"[KomgaClient] GET '{endpoint}' returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+                    return default;
+                }
+
+                string? mediaType = response.Content.Headers.ContentType?.MediaType;
+                if (mediaType != null && mediaType.Contains("html", StringComparison.OrdinalIgnoreCase))
+                {
+                    AppLogger.LogWarning($"[KomgaClient] GET '{endpoint}' returned HTML instead of JSON. Server may have redirected to login.");
+                    return default;
+                }
+
+                var stream = await response.Content.ReadAsStreamAsync(ct);
+                return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, ct);
+            }
+            catch (Exception ex) when (IsTransientConnectionFailure(ex) && attempt <= MaxConnectionRetries)
+            {
+                AppLogger.LogWarning($"[KomgaClient] GET '{endpoint}' attempt {attempt} failed transiently ({ex.Message}); retrying...");
+                await Task.Delay(RetryDelay, ct);
+            }
         }
 
-        string? mediaType = response.Content.Headers.ContentType?.MediaType;
-        if (mediaType != null && mediaType.Contains("html", StringComparison.OrdinalIgnoreCase))
-        {
-            AppLogger.LogWarning($"[KomgaClient] GET '{endpoint}' returned HTML instead of JSON. Server may have redirected to login.");
-            return default;
-        }
-
-        var stream = await response.Content.ReadAsStreamAsync(ct);
-        return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, ct);
+        return default;
     }
 
     public static string TranslatePath(string localPath, IEnumerable<KomgaPathMapping>? mappings)

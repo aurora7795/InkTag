@@ -121,6 +121,7 @@ public class BulkScrapeItemViewModel : ObservableObject
                 Item.Status = value;
                 OnPropertyChanged(nameof(StatusBadgeBackground));
                 OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(StatusTooltip));
             }
         }
     }
@@ -134,7 +135,36 @@ public class BulkScrapeItemViewModel : ObservableObject
             if (SetProperty(ref _statusMessage, value))
             {
                 Item.StatusMessage = value;
+                OnPropertyChanged(nameof(StatusTooltip));
             }
+        }
+    }
+
+    public string? ErrorMessage => Item.ErrorMessage;
+
+    public string StatusTooltip
+    {
+        get
+        {
+            if (Status == BulkScrapeItemStatus.Error)
+            {
+                if (!string.IsNullOrWhiteSpace(StatusMessage))
+                {
+                    return StatusMessage;
+                }
+                if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    return ErrorMessage;
+                }
+                return "An error occurred during auto-tag processing.";
+            }
+
+            if (!string.IsNullOrWhiteSpace(StatusMessage))
+            {
+                return StatusMessage;
+            }
+
+            return StatusText;
         }
     }
 
@@ -393,17 +423,23 @@ public class BulkScrapeItemViewModel : ObservableObject
         _ => Status.ToString()
     };
 
+    public bool DetectedIntroPage => Item.DetectedIntroPage;
+    public bool HasIntroPageBadge => Item.DetectedIntroPage;
+    public string IntroPageBadge => Item.DetectedIntroPage ? "Page 2 Cover" : string.Empty;
+
     public void SyncFromItem()
     {
         Status = Item.Status;
         StatusMessage = Item.StatusMessage;
         MatchedCandidate = Item.MatchedCandidate;
         IsSelected = Item.IsSelected;
+        OnPropertyChanged(nameof(StatusTooltip));
+        OnPropertyChanged(nameof(ErrorMessage));
         OnPropertyChanged(nameof(IsCbr));
         OnPropertyChanged(nameof(Filename));
         OnPropertyChanged(nameof(FilePath));
 
-        if (LocalThumbnail == null && Item.LocalCoverBytes != null && Item.LocalCoverBytes.Length > 0)
+        if (Item.LocalCoverBytes != null && Item.LocalCoverBytes.Length > 0 && (LocalThumbnail == null || Item.DetectedIntroPage))
         {
             try
             {
@@ -415,6 +451,10 @@ public class BulkScrapeItemViewModel : ObservableObject
                 // Ignore
             }
         }
+
+        OnPropertyChanged(nameof(DetectedIntroPage));
+        OnPropertyChanged(nameof(HasIntroPageBadge));
+        OnPropertyChanged(nameof(IntroPageBadge));
     }
 
     private void LoadMatchedThumbnailAsync(ComicSearchResult candidate)

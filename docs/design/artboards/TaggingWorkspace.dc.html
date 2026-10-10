@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --bg:#F3F3F7;--surface:#FFFFFF;--header:#ECECEF;--border:#D1D1D6;--cardborder:#E0E0E6;
+      --ink:#1C1C1E;--ink2:#3A3A3C;--muted:#8E8E93;--accent:#007ACC;
+      --gridline:#E5E5EA;--statusbg:#F8FAFC;--status-muted:#64748B;--status-border:#E2E8F0;--btn-outline:#D1D5DB;
+      --good:#137333;--take:#EAF3EC;--keep:#F1F1F4;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:12px;-webkit-font-smoothing:antialiased}
+    .app{width:1440px;height:900px;display:flex;flex-direction:column;background:var(--bg)}
+    .menubar{height:26px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:0 12px;color:var(--ink2)}
+
+    .qbar{height:46px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 16px}
+    .qbar .nav{width:30px;height:28px;border:1px solid var(--btn-outline);border-radius:6px;display:flex;align-items:center;justify-content:center}
+    .qbar .pos{font-size:13px;font-weight:600}
+    .qbar .prog{flex:1;max-width:340px;height:6px;border-radius:3px;background:var(--gridline);overflow:hidden}
+    .qbar .prog>i{display:block;height:100%;width:26%;background:var(--accent)}
+    .qbar .mode{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--muted)}
+    .seg{display:flex;border:1px solid var(--btn-outline);border-radius:6px;overflow:hidden}
+    .seg span{padding:5px 10px;font-size:11px;color:var(--muted)}
+    .seg span.on{background:var(--accent);color:#fff;font-weight:600}
+
+    .body{flex:1;display:grid;grid-template-columns:320px 1fr 360px;min-height:0}
+    .pane{background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+    .pane + .pane{border-left:1px solid var(--border)}
+    .ph{padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+    /* left: local comic */
+    .local{align-items:center;padding:18px;gap:12px}
+    .lcover{width:190px;height:285px;border-radius:8px;background:linear-gradient(150deg,#E7E7EC,#D9D9E0);border:1px solid var(--cardborder)}
+    .pgsw{display:flex;align-items:center;gap:10px;color:var(--ink2);font-size:12px}
+    .pgsw .a{width:24px;height:24px;border:1px solid var(--btn-outline);border-radius:5px;display:flex;align-items:center;justify-content:center}
+    .lmeta{align-self:stretch;font-size:11.5px;color:var(--ink2);line-height:1.6}
+    .lmeta .k{color:var(--muted)}
+    .introflag{align-self:stretch;font-size:11px;background:#FDECCF;color:#8A5200;border-radius:6px;padding:8px 10px;line-height:1.4}
+
+    /* center: diff */
+    .diff{overflow:hidden}
+    .drow{display:grid;grid-template-columns:96px 1fr 1fr 108px;align-items:center;gap:0;border-bottom:1px solid var(--gridline);min-height:40px}
+    .drow .fl{padding:0 12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+    .drow .v{padding:8px 12px;font-size:12px;color:var(--ink2);border-left:1px solid var(--gridline);min-width:0;overflow:hidden}
+    .drow .v.was{color:var(--muted)}
+    .drow .v.new{background:var(--take)}
+    .drow .v.wf{}
+    .drow .v.wf > i{display:block;height:9px;border-radius:3px;background:var(--gridline);width:60%}
+    .toggle{margin:0 12px;display:flex;border:1px solid var(--btn-outline);border-radius:6px;overflow:hidden;font-size:10px}
+    .toggle span{padding:4px 7px;color:var(--muted)}
+    .toggle span.on{background:#EAF3EC;color:var(--good);font-weight:700}
+    .dhdr{display:grid;grid-template-columns:96px 1fr 1fr 108px;background:#F8F8FA;border-bottom:1px solid var(--border);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+    .dhdr>div{padding:8px 12px;border-left:1px solid var(--gridline)}
+    .dhdr>div:first-child{border-left:none}
+
+    /* right: candidates */
+    .cands{overflow:hidden}
+    .cand{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid var(--gridline)}
+    .cand.sel{background:#F2F7FB;box-shadow:inset 2px 0 0 var(--accent)}
+    .cand .ct{width:44px;height:66px;border-radius:4px;background:linear-gradient(150deg,#E7E7EC,#D9D9E0);border:1px solid var(--cardborder);flex:none}
+    .cand .nm{font-size:12px;font-weight:600}
+    .cand .sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+    .chips{display:flex;gap:6px;margin-top:6px}
+    .chip{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px}
+    .chip.conf{background:#E3F0E4;color:var(--good)}
+    .chip.vis{background:#E5EEF6;color:#005A99}
+
+    .actionbar{height:56px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}
+    .btn{height:32px;display:flex;align-items:center;gap:6px;padding:0 14px;border:1px solid var(--btn-outline);border-radius:7px;background:var(--surface);white-space:nowrap}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+    .btn.ghost{border-color:transparent}
+    .frame-label{position:absolute;left:0;top:-26px;font-size:13px;font-weight:700;color:#1C1C1E}
+    a{color:#007ACC}a:hover{color:#005A99}
+  </style>
+</helmet>
+
+<div class="app">
+    <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span></div>
+
+    <div class="qbar">
+      <div class="nav"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="pos">Reviewing 12 <span style="color:var(--muted);font-weight:400">of 47 untagged</span></div>
+      <div class="prog"><i></i></div>
+      <div class="nav"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+      <div class="mode">Merge<span class="seg"><span class="on">Fill missing</span><span>Overwrite</span></span></div>
+    </div>
+
+    <div class="body">
+      <div class="pane local">
+        <div class="ph" style="align-self:stretch">Your comic</div>
+        <div class="lcover"></div>
+        <div class="pgsw"><span class="a"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></span>Page 1 / 24<span class="a"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+        <div class="lmeta"><span class="k">File</span> &nbsp;preacher-04.cbr<br><span class="k">Parsed</span> &nbsp;Preacher #4 (1995?)<br><span class="k">Format</span> &nbsp;CBR &rarr; will convert to CBZ on save</div>
+        <div class="introflag">Page 1 looks like a scanner credit &mdash; cover matched 94% on page 2. <a href="#">Strip it on apply</a></div>
+      </div>
+
+      <div class="pane diff">
+        <div class="ph">Field-by-field</div>
+        <div class="dhdr"><div>Field</div><div>Current</div><div>From ComicVine</div><div>Result</div></div>
+        <div class="drow"><div class="fl">Series</div><div class="v was">Preacher</div><div class="v new">Preacher</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Number</div><div class="v was">4</div><div class="v new">4</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Title</div><div class="v was wf"><i style="width:0"></i>&mdash;</div><div class="v new">The Beginning of the End</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Year</div><div class="v was">&mdash;</div><div class="v new">1995</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Writer</div><div class="v was">Garth Ennis</div><div class="v">Garth Ennis</div><div class="toggle"><span>take</span><span class="on">keep</span></div></div>
+        <div class="drow"><div class="fl">Penciller</div><div class="v was">&mdash;</div><div class="v new">Steve Dillon</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Publisher</div><div class="v was">Vertigo</div><div class="v">Vertigo</div><div class="toggle"><span>take</span><span class="on">keep</span></div></div>
+        <div class="drow"><div class="fl">Summary</div><div class="v was">&mdash;</div><div class="v new" style="white-space:normal;line-height:1.35">Jesse, Tulip and Cassidy hit the road as the Saint of Killers closes in&hellip;</div><div class="toggle"><span class="on">take</span><span>keep</span></div></div>
+        <div class="drow"><div class="fl">Notes</div><div class="v was" style="white-space:normal;line-height:1.35;font-size:11px">Tagged with InkTag 0.13.0 &hellip; [Issue ID 4000&#8209;19282]</div><div class="v" style="font-size:11px;color:var(--muted)">attribution note refreshed</div><div class="toggle"><span class="on">auto</span></div></div>
+        <div class="drow" style="border-bottom:none"><div class="fl" style="color:var(--muted)">&hellip; 26 unchanged fields hidden</div><div></div><div></div><div></div></div>
+      </div>
+
+      <div class="pane cands">
+        <div class="ph">Candidates &middot; ComicVine</div>
+        <div class="cand sel">
+          <span class="ct"></span>
+          <div style="min-width:0"><div class="nm">Preacher #4</div><div class="sub">Preacher (1995) &middot; DC / Vertigo</div><div class="chips"><span class="chip conf">Match 96%</span><span class="chip vis">Cover 94%</span></div></div>
+        </div>
+        <div class="cand">
+          <span class="ct"></span>
+          <div style="min-width:0"><div class="nm">Preacher #4</div><div class="sub">Preacher: Special &middot; 2009 reprint</div><div class="chips"><span class="chip conf" style="background:#F1E7E7;color:#A12A2A">Match 41%</span></div></div>
+        </div>
+        <div class="cand">
+          <span class="ct"></span>
+          <div style="min-width:0"><div class="nm">Preacher Vol. 1 #4</div><div class="sub">Absolute Preacher &middot; 2016</div><div class="chips"><span class="chip conf" style="background:#F1E7E7;color:#A12A2A">Match 38%</span></div></div>
+        </div>
+        <div style="padding:12px 14px;font-size:11px;color:var(--muted)"><a href="#">Search a different series&hellip;</a></div>
+      </div>
+    </div>
+
+    <div class="actionbar">
+      <div class="btn ghost">Skip</div>
+      <div class="btn ghost">Not a match &mdash; search manually</div>
+      <div style="flex:1"></div>
+      <div class="btn">Apply</div>
+      <div class="btn primary">Apply &amp; next<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+    </div>
+  </div>
+
+</x-dc>
+</body>
+</html>

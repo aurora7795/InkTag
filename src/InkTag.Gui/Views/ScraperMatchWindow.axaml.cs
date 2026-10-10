@@ -24,10 +24,13 @@ public class FieldDiffItem
 public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyPropertyChanged
 {
     private readonly ComicInfo _targetComic;
-    private readonly ulong? _localCoverHash;
-    private readonly string? _filePath;
+    private ulong? _localCoverHash;
+    private string? _filePath;
     private readonly MetadataScraperService _scraperService;
     private ComicInfo? _fetchedComic;
+    private int _currentPageIndex = 0;
+    private int _totalArchivePages = 1;
+    private ComicSearchQuery? _currentQuery;
 
     private Avalonia.Media.Imaging.Bitmap? _localCoverImage;
     public Avalonia.Media.Imaging.Bitmap? LocalCoverImage
@@ -35,6 +38,8 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
         get => _localCoverImage;
         set { _localCoverImage = value; OnPropertyChanged(nameof(LocalCoverImage)); }
     }
+
+    public string PageDisplayStatus => _totalArchivePages > 1 ? $"Page {_currentPageIndex + 1}/{_totalArchivePages}" : $"Page {_currentPageIndex + 1}";
 
     private Avalonia.Media.Imaging.Bitmap? _selectedCandidateThumbnail;
     public Avalonia.Media.Imaging.Bitmap? SelectedCandidateThumbnail
@@ -59,25 +64,44 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
     public ComicSearchResult? SelectedCandidate { get; private set; }
     public ComicInfo? FetchedComic => _fetchedComic;
     public ObservableCollection<FieldDiffItem> FieldDiffs { get; } = new();
+    public bool ApplySeriesToRemainingUnmatched { get; private set; }
+    public SeriesSearchResult? ChosenSeries { get; private set; }
+    private readonly bool _isBulkQueueMode;
 
     public ScraperMatchWindow() : this(new ComicInfo())
     {
     }
 
-    public ScraperMatchWindow(ComicInfo targetComic, IEnumerable<ComicSearchResult>? initialCandidates = null, Avalonia.Media.Imaging.Bitmap? localCover = null, ulong? localCoverHash = null, string? filePath = null)
+    public ScraperMatchWindow(ComicInfo targetComic, IEnumerable<ComicSearchResult>? initialCandidates = null, Avalonia.Media.Imaging.Bitmap? localCover = null, ulong? localCoverHash = null, string? filePath = null, bool isBulkQueueMode = false)
     {
         InitializeComponent();
         DataContext = this;
         _targetComic = targetComic;
         _localCoverHash = localCoverHash;
         _filePath = filePath;
+        _isBulkQueueMode = isBulkQueueMode;
         LocalCoverImage = localCover;
         _scraperService = new MetadataScraperService(new AppSettingsService());
+
+        if (!string.IsNullOrEmpty(filePath) && System.IO.File.Exists(filePath))
+        {
+            try
+            {
+                var editor = new MetadataEditor();
+                var entries = editor.GetImageEntries(filePath);
+                _totalArchivePages = Math.Max(1, entries.Count);
+            }
+            catch
+            {
+                _totalArchivePages = 1;
+            }
+        }
 
         DiffDataGrid.ItemsSource = FieldDiffs;
 
         // Populate search queries from target comic or fallback to filename parser & parent directory inference
         var query = MetadataScraperService.ExtractQueryFromComicInfo(targetComic, filePath);
+        _currentQuery = query;
         string series = query.Series;
         string issue = query.IssueNumber;
         string year = query.Year?.ToString() ?? "";
@@ -95,6 +119,7 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
                 IssueNumber = issue,
                 Year = parsedYear > 0 ? parsedYear : null
             };
+            _currentQuery = initialQuery;
             SetCandidates(initialCandidates, initialQuery);
         }
         else if (!string.IsNullOrWhiteSpace(series))
@@ -103,12 +128,74 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
         }
     }
 
+    private async void PrevPage_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_filePath) || !System.IO.File.Exists(_filePath) || _currentPageIndex <= 0) return;
+        _currentPageIndex--;
+        await SwitchPageAsync(_currentPageIndex);
+    }
+
+    private async void NextPage_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_filePath) || !System.IO.File.Exists(_filePath) || _currentPageIndex >= _totalArchivePages - 1) return;
+        _currentPageIndex++;
+        await SwitchPageAsync(_currentPageIndex);
+    }
+
+    private async Task SwitchPageAsync(int pageIndex)
+    {
+        try
+        {
+            var coverService = new Gui.Services.ArchiveCoverService();
+            var (bitmap, hash) = await coverService.LoadCoverWithHashAsync(_filePath!, pageIndex, default);
+            if (bitmap != null)
+            {
+                LocalCoverImage = bitmap;
+                _localCoverHash = hash != 0 ? hash : null;
+                OnPropertyChanged(nameof(PageDisplayStatus));
+
+                if (pageIndex > 0)
+                {
+                    RemoveIntroPageCheckBox.IsChecked = true;
+                }
+
+                ReevaluateCandidatesWithCurrentHash();
+            }
+        }
+        catch (Exception ex)
+        {
+            Core.Logging.AppLogger.LogWarning($"Failed to load page {pageIndex} in ScraperMatchWindow: {ex.Message}");
+        }
+    }
+
+    private void ReevaluateCandidatesWithCurrentHash()
+    {
+        if (CandidatesListBox.ItemsSource is IEnumerable<CandidateItemViewModel> currentItems)
+        {
+            var list = currentItems.ToList();
+            foreach (var vm in list)
+            {
+                if (vm.CoverHash.HasValue && vm.CoverHash.Value != 0 && _localCoverHash.HasValue && _localCoverHash.Value != 0)
+                {
+                    vm.VisualSimilarity = Core.Images.PerceptualHashService.CalculateSimilarity(_localCoverHash.Value, vm.CoverHash.Value);
+                }
+                vm.MatchConfidence = ComicVineProvider.CalculateConfidence(vm.Result, _currentQuery ?? new ComicSearchQuery(), _localCoverHash);
+            }
+            EvaluateTopVisualMatch(list);
+            if (CandidatesListBox.SelectedItem is CandidateItemViewModel selectedVm)
+            {
+                UpdateVisualSimilarityDisplay(selectedVm);
+            }
+        }
+    }
+
     private void SetCandidates(IEnumerable<ComicSearchResult> candidates, ComicSearchQuery? query = null)
     {
+        _currentQuery = query ?? _currentQuery;
         var candidateList = candidates.ToList();
         var viewModels = candidateList.Select(c =>
         {
-            var vm = new CandidateItemViewModel(c, _localCoverHash, query);
+            var vm = new CandidateItemViewModel(c, _localCoverHash, _currentQuery);
             vm.OnCoverHashComputed += OnCandidateCoverHashComputed;
             return vm;
         }).ToList();
@@ -182,6 +269,15 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
         }
     }
 
+    private async void SearchTextBox_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key == Avalonia.Input.Key.Enter || e.Key == Avalonia.Input.Key.Return)
+        {
+            e.Handled = true;
+            await PerformSearchAsync();
+        }
+    }
+
     private async void Search_Click(object? sender, RoutedEventArgs e)
     {
         await PerformSearchAsync();
@@ -195,11 +291,14 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
         }
 
         string initialQuery = SeriesTextBox.Text?.Trim() ?? _targetComic.Series ?? "";
-        var wizard = new SeriesSearchWizardWindow(initialQuery, _localCoverHash, _filePath);
+        var wizard = new SeriesSearchWizardWindow(initialQuery, _localCoverHash, _filePath, _isBulkQueueMode);
         await wizard.ShowDialog(this);
 
         if (wizard.WasApplied && wizard.SelectedResult != null)
         {
+            ApplySeriesToRemainingUnmatched = wizard.ApplySeriesToRemainingUnmatched;
+            ChosenSeries = wizard.ChosenSeries;
+
             int? year = int.TryParse(YearTextBox.Text, out int y) ? y : _targetComic.Year;
             var targetQuery = new ComicSearchQuery
             {
@@ -378,6 +477,23 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
     {
         if (_fetchedComic == null) return;
 
+        if (RemoveIntroPageCheckBox.IsChecked == true && !string.IsNullOrEmpty(_filePath) && System.IO.File.Exists(_filePath))
+        {
+            try
+            {
+                var editor = new MetadataEditor();
+                var stripResult = editor.StripFirstPage(_filePath);
+                if (stripResult.Success)
+                {
+                    _filePath = stripResult.FilePath;
+                }
+            }
+            catch (Exception ex)
+            {
+                Core.Logging.AppLogger.LogWarning($"Failed to strip intro page on apply: {ex.Message}");
+            }
+        }
+
         SelectedCandidate = (CandidatesListBox.SelectedItem as CandidateItemViewModel)?.Result;
         var selectedFields = new HashSet<string>(FieldDiffs.Where(f => f.IsSelected).Select(f => f.FieldName));
         _scraperService.ApplyMetadata(_targetComic, _fetchedComic, ScrapeMergeMode.SelectiveFields, selectedFields);
@@ -388,6 +504,23 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
     private void OverwriteAll_Click(object? sender, RoutedEventArgs e)
     {
         if (_fetchedComic == null) return;
+
+        if (RemoveIntroPageCheckBox.IsChecked == true && !string.IsNullOrEmpty(_filePath) && System.IO.File.Exists(_filePath))
+        {
+            try
+            {
+                var editor = new MetadataEditor();
+                var stripResult = editor.StripFirstPage(_filePath);
+                if (stripResult.Success)
+                {
+                    _filePath = stripResult.FilePath;
+                }
+            }
+            catch (Exception ex)
+            {
+                Core.Logging.AppLogger.LogWarning($"Failed to strip intro page on apply: {ex.Message}");
+            }
+        }
 
         SelectedCandidate = (CandidatesListBox.SelectedItem as CandidateItemViewModel)?.Result;
         _scraperService.ApplyMetadata(_targetComic, _fetchedComic, ScrapeMergeMode.OverwriteAll);

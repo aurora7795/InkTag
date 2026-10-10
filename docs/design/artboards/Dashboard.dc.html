@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --bg:#F3F3F7;--surface:#FFFFFF;--header:#ECECEF;--border:#D1D1D6;--cardborder:#E0E0E6;
+      --ink:#1C1C1E;--ink2:#3A3A3C;--muted:#8E8E93;--accent:#007ACC;
+      --gridline:#E5E5EA;--statusbg:#F8FAFC;--status-muted:#64748B;--status-border:#E2E8F0;--btn-outline:#D1D5DB;
+      --good:#137333;--warn:#8A5200;--bad:#A12A2A;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:12px;-webkit-font-smoothing:antialiased}
+    .app{width:1440px;height:900px;display:flex;flex-direction:column;background:var(--bg)}
+    .menubar{height:26px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:0 12px;color:var(--ink2)}
+    .toolbar{height:44px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px}
+    .btn{height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);white-space:nowrap}
+    .path{flex:1;height:28px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);display:flex;align-items:center;padding:0 10px;color:var(--muted);min-width:0}
+    .tabbar{height:38px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:0 14px}
+    .vtab{height:38px;padding:0 14px;display:flex;align-items:center;color:var(--muted);border-bottom:2px solid transparent}
+    .vtab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+
+    .content{flex:1;overflow:hidden;padding:22px 26px;display:flex;flex-direction:column;gap:20px}
+    h2{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+    .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+    .tile{background:var(--surface);border:1px solid var(--cardborder);border-radius:10px;padding:16px 18px}
+    .tile .n{font-size:30px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+    .tile .l{margin-top:6px;font-size:12px;color:var(--muted)}
+    .tile.warn .n{color:var(--warn)} .tile.bad .n{color:var(--bad)} .tile.good .n{color:var(--good)}
+    .tile .spark{margin-top:10px;height:6px;border-radius:3px;background:var(--gridline);overflow:hidden}
+    .tile .spark > i{display:block;height:100%;background:var(--accent)}
+
+    .cols{flex:1;display:grid;grid-template-columns:1.35fr 1fr;gap:18px;min-height:0}
+    .panel{background:var(--surface);border:1px solid var(--cardborder);border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+    .panel .ph{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    .panel .ph b{font-size:13px}
+    .panel .ph a{margin-left:auto;font-size:11px}
+    .pbody{padding:6px 0;overflow:hidden}
+    .attn{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--gridline)}
+    .attn .th{width:26px;height:38px;border-radius:3px;background:linear-gradient(150deg,#E7E7EC,#D9D9E0);border:1px solid var(--cardborder);flex:none}
+    .attn .nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .attn .rs{font-size:10.5px;color:var(--muted)}
+    .attn .tag{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:auto}
+    .tag.u{background:#FDE2E2;color:var(--bad)} .tag.r{background:#FDECCF;color:var(--warn)} .tag.e{background:#EFE0E0;color:var(--bad)}
+    .attn .go{width:22px;height:22px;border:1px solid var(--btn-outline);border-radius:5px;display:flex;align-items:center;justify-content:center;flex:none}
+
+    .actions{display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+    .bigbtn{border:1px solid var(--cardborder);border-radius:8px;padding:13px 14px;display:flex;align-items:center;gap:12px;background:var(--surface)}
+    .bigbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .bigbtn .bt{font-size:12.5px;font-weight:600}
+    .bigbtn .bs{font-size:10.5px;color:var(--muted)}
+    .bigbtn.primary .bs{color:#DCEBF6}
+    .ico{width:34px;height:34px;border-radius:7px;background:#EEF4FA;display:flex;align-items:center;justify-content:center;flex:none}
+    .bigbtn.primary .ico{background:rgba(255,255,255,.18)}
+
+    .rj{padding:12px 16px;font-size:11.5px;color:var(--ink2);line-height:1.6}
+    .rj .k{color:var(--muted)}
+
+    .statusbar{height:28px;background:var(--statusbg);border-top:1px solid var(--status-border);display:flex;align-items:center;gap:16px;padding:0 12px;font-size:11px;color:var(--status-muted)}
+    .frame-label{position:absolute;left:0;top:-26px;font-size:13px;font-weight:700;color:#1C1C1E}
+    a{color:#007ACC}a:hover{color:#005A99}
+  </style>
+</helmet>
+
+<div class="app">
+    <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span></div>
+    <div class="toolbar">
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open Folder</div>
+      <div class="path">/home/martin/Comics/Vertigo</div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M20 11a8 8 0 1 0-2 5.3M20 4v6h-6"/></svg>Rescan</div>
+    </div>
+    <div class="tabbar"><div class="vtab on">Overview</div><div class="vtab">Library grid</div><div class="vtab">Bulk jobs</div></div>
+
+    <div class="content">
+      <div>
+        <h2>Vertigo &mdash; 312 comics</h2>
+        <div class="tiles" style="margin-top:12px">
+          <div class="tile good"><div class="n">265</div><div class="l">Tagged &middot; 85%</div><div class="spark"><i style="width:85%"></i></div></div>
+          <div class="tile warn"><div class="n">47</div><div class="l">Untagged &mdash; no metadata</div></div>
+          <div class="tile"><div class="n">5</div><div class="l">Matched, need review</div></div>
+          <div class="tile bad"><div class="n">2</div><div class="l">Read / archive errors</div></div>
+        </div>
+      </div>
+
+      <div class="cols">
+        <div class="panel">
+          <div class="ph"><b>Needs attention</b><a href="#">View all 54 &rsaquo;</a></div>
+          <div class="pbody">
+            <div class="attn"><span class="th"></span><span><span class="nm">Sandman_017.cbz</span><br><span class="rs">No ComicInfo.xml &middot; filename parsed &ldquo;Sandman #17&rdquo;</span></span><span class="tag u">UNTAGGED</span><span class="go"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div class="attn"><span class="th"></span><span><span class="nm">scan_099.cbz</span><br><span class="rs">No metadata &middot; no filename match</span></span><span class="tag u">UNTAGGED</span><span class="go"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div class="attn"><span class="th"></span><span><span class="nm">Preacher #4</span><br><span class="rs">ComicVine match at 72% &mdash; confirm the volume</span></span><span class="tag r">REVIEW</span><span class="go"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div class="attn"><span class="th"></span><span><span class="nm">Hellblazer_063.cbr</span><br><span class="rs">Archive header unreadable over GVFS mount</span></span><span class="tag e">ERROR</span><span class="go"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+            <div class="attn" style="border-bottom:none"><span class="th"></span><span><span class="nm">img_0442.cbz</span><br><span class="rs">No metadata &middot; filename parsed &ldquo;#7&rdquo; only</span></span><span class="tag u">UNTAGGED</span><span class="go"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+          <div class="panel">
+            <div class="ph"><b>Quick actions</b></div>
+            <div class="actions">
+              <div class="bigbtn primary"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><path d="M6 17v4M4 19h4M13 3l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></svg></span><span><div class="bt">Bulk Auto-Tag 47 untagged</div><div class="bs">ComicVine + cover match, preview before applying</div></span></div>
+              <div class="bigbtn"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007ACC" stroke-width="1.7"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span><span><div class="bt">Bulk rename from metadata</div><div class="bs">{Series} #{Number} ({Year})</div></span></div>
+              <div class="bigbtn"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007ACC" stroke-width="1.7"><path d="M4 12a8 8 0 0 1 8-8M20 12a8 8 0 0 1-8 8M4 4v4h4M20 20v-4h-4"/></svg></span><span><div class="bt">Sync changes to Komga</div><div class="bs">3 modified since last sync</div></span></div>
+            </div>
+          </div>
+          <div class="panel" style="flex:1">
+            <div class="ph"><b>Last batch job</b><a href="#">Roll back &rsaquo;</a></div>
+            <div class="rj"><span class="k">batch_20260901_1912</span> &mdash; Bulk Auto-Tag<br>38 archives tagged &middot; 4 CBR&rarr;CBZ &middot; 0 failures<br><span class="k">2 days ago &middot; every write has a restore point</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar"><span>Library healthy &middot; 85% tagged</span><span style="margin-left:auto">Komga: connected</span><span>InkTag v0.13.0</span></div>
+  </div>
+
+</x-dc>
+</body>
+</html>
