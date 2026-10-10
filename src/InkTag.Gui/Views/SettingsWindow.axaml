@@ -57,7 +57,7 @@
                   <CheckBox Name="BulkAutoRenameCheckBox" Content="Automatically rename files after bulk scraping" Margin="0,2,0,0"/>
                   <StackPanel Spacing="4" Margin="0,4,0,0">
                     <TextBlock Text="Filename Template:" FontSize="12" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                    <TextBox Name="RenameTemplateTextBox" Watermark="{}{Series} #{Number:3} ({Year})"/>
+                    <TextBox Name="RenameTemplateTextBox" PlaceholderText="{}{Series} #{Number:3} ({Year})"/>
                     <TextBlock Text="Available tokens: {Series}, {Number}, {Number:3}, {Year}, {Volume}, {Publisher}, {Title}" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"/>
                   </StackPanel>
                 </StackPanel>
@@ -96,7 +96,7 @@
                   <TextBlock Text="ComicVine API Integration" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource AppTextPrimaryBrush}"/>
                   <TextBlock Text="Required for online issue searching, creator credits, character lists, and volume info." FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}" TextWrapping="Wrap"/>
                   <Grid ColumnDefinitions="*, Auto" Margin="0,4,0,0">
-                    <TextBox Name="ApiKeyTextBox" Grid.Column="0" PasswordChar="•" Watermark="Enter your ComicVine API key..."/>
+                    <TextBox Name="ApiKeyTextBox" Grid.Column="0" PasswordChar="•" PlaceholderText="Enter your ComicVine API key..."/>
                     <Button Grid.Column="1" Content="Test Key" Click="TestApiKey_Click" Padding="14,6" Background="{DynamicResource AppButtonBackgroundBrush}" Margin="8,0,0,0"/>
                   </Grid>
                   <TextBlock Name="StatusTextBlock" Text="" FontSize="11" Foreground="Gray"/>
@@ -147,7 +147,7 @@
                   <StackPanel Spacing="4" Margin="0,4,0,0">
                     <TextBlock Text="Server Base URL:" FontSize="12" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                     <Grid ColumnDefinitions="*, Auto">
-                      <TextBox Name="KomgaUrlTextBox" Grid.Column="0" Watermark="http://localhost:25600 or http://192.168.1.30:25600"/>
+                      <TextBox Name="KomgaUrlTextBox" Grid.Column="0" PlaceholderText="http://localhost:25600 or http://192.168.1.30:25600"/>
                       <Button Grid.Column="1" Content="Test Server" Click="TestKomga_Click" Padding="14,6" Background="{DynamicResource AppButtonBackgroundBrush}" Margin="8,0,0,0"/>
                     </Grid>
                     <TextBlock Name="KomgaStatusTextBlock" Text="" FontSize="11" Foreground="Gray"/>
@@ -156,13 +156,13 @@
                   <Grid ColumnDefinitions="*, *" Margin="0,6,0,0">
                     <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,4,0">
                       <TextBlock Text="API Key (Recommended):" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                      <TextBox Name="KomgaApiKeyTextBox" PasswordChar="•" Watermark="Komga API Key..."/>
+                      <TextBox Name="KomgaApiKeyTextBox" PasswordChar="•" PlaceholderText="Komga API Key..."/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="4" Margin="4,0,0,0">
                       <TextBlock Text="Or User / Password:" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                       <Grid ColumnDefinitions="*, *">
-                        <TextBox Name="KomgaUserTextBox" Grid.Column="0" Watermark="email@komga.org" Margin="0,0,2,0"/>
-                        <TextBox Name="KomgaPasswordTextBox" Grid.Column="1" PasswordChar="•" Watermark="Password" Margin="2,0,0,0"/>
+                        <TextBox Name="KomgaUserTextBox" Grid.Column="0" PlaceholderText="email@komga.org" Margin="0,0,2,0"/>
+                        <TextBox Name="KomgaPasswordTextBox" Grid.Column="1" PasswordChar="•" PlaceholderText="Password" Margin="2,0,0,0"/>
                       </Grid>
                     </StackPanel>
                   </Grid>
@@ -186,11 +186,11 @@
                   <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
                     <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,4,0">
                       <TextBlock Text="Local Client Root:" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                      <TextBox Name="KomgaLocalPrefixTextBox" Watermark="/Volumes/General/Comics/"/>
+                      <TextBox Name="KomgaLocalPrefixTextBox" PlaceholderText="/Volumes/General/Comics/"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="4" Margin="4,0,0,0">
                       <TextBlock Text="Komga Server Root:" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                      <TextBox Name="KomgaServerPrefixTextBox" Watermark="/data/Comics/"/>
+                      <TextBox Name="KomgaServerPrefixTextBox" PlaceholderText="/data/Comics/"/>
                     </StackPanel>
                   </Grid>
                 </StackPanel>

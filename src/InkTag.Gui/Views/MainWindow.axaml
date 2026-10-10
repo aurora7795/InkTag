@@ -257,7 +257,7 @@
 
             <!-- Quick Filter / Search Box -->
             <TextBox Grid.Column="1" Text="{Binding FilterSearchText}" 
-                     Watermark="🔍 Filter list by file name, series, title, writer..." 
+                     PlaceholderText="🔍 Filter list by file name, series, title, writer..." 
                      Margin="16,0" Padding="6,4" FontSize="11" Height="26"
                      Background="{DynamicResource AppInputBackgroundBrush}" Foreground="{DynamicResource AppTextPrimaryBrush}" BorderBrush="{DynamicResource AppInputBorderBrush}" CornerRadius="3"/>
 
@@ -504,7 +504,7 @@
 
                           <!-- Context-Sensitive Inputs -->
                           <!-- String Text Editor -->
-                          <TextBox Text="{Binding StringValue}" Watermark="New Value" IsVisible="{Binding IsTextEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                          <TextBox Text="{Binding StringValue}" PlaceholderText="New Value" IsVisible="{Binding IsTextEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
 
                           <!-- Numeric Editor -->
                           <NumericUpDown Value="{Binding NumericValue}" IsVisible="{Binding IsNumericEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
@@ -514,8 +514,8 @@
 
                           <!-- Find & Replace Pair -->
                           <Grid ColumnDefinitions="*, *" IsVisible="{Binding IsReplaceEditorVisible}">
-                            <TextBox Text="{Binding FindValue}" Watermark="Find..." Grid.Column="0" Margin="0,0,4,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
-                            <TextBox Text="{Binding ReplaceValue}" Watermark="Replace with..." Grid.Column="1" Margin="4,0,0,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                            <TextBox Text="{Binding FindValue}" PlaceholderText="Find..." Grid.Column="0" Margin="0,0,4,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                            <TextBox Text="{Binding ReplaceValue}" PlaceholderText="Replace with..." Grid.Column="1" Margin="4,0,0,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
                           </Grid>
                         </StackPanel>
                       </Border>
