@@ -289,9 +289,9 @@
             <DataGridTemplateColumn Header="File Name" Width="235" SortMemberPath="FileName">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ComicItemViewModel">
-                  <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="6,0">
-                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding FileName}" MaxWidth="155"/>
-                    <Border IsVisible="{Binding IsCbr}"
+                  <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center" Margin="6,0">
+                    <TextBlock Grid.Column="0" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding FileName}"/>
+                    <Border Grid.Column="1" Margin="6,0,0,0" IsVisible="{Binding IsCbr}"
                             Background="{Binding FormatBadgeBackground}"
                             BorderBrush="{Binding FormatBadgeBorder}"
                             BorderThickness="1"
@@ -305,7 +305,7 @@
                                  Foreground="{Binding FormatBadgeForeground}"
                                  VerticalAlignment="Center"/>
                     </Border>
-                  </StackPanel>
+                  </Grid>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
