@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependency Vulnerability Fixes**: Upgraded `SixLabors.ImageSharp` from 3.1.7 to 4.1.3, resolving three high-severity and three moderate-severity advisories flagged by NuGet audit (`NU1903`).
+
+### Changed
+- **Package Updates**: Bumped `SharpCompress` to 0.50.5, `Velopack` to 1.2.161, `Microsoft.Extensions.Hosting` to 10.0.12, and `ModelContextProtocol` to 2.2.0.
 ## [0.13.1] - 2026-09-15
 
 ### Added
