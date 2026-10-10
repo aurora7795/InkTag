@@ -250,7 +250,7 @@
 
             <!-- Quick Filter / Search Box -->
             <TextBox Grid.Column="1" Text="{Binding FilterSearchText}" 
-                     Watermark="🔍 Filter list by file name, series, title, writer..." 
+                     PlaceholderText="🔍 Filter list by file name, series, title, writer..." 
                      Margin="16,0" Padding="6,4" FontSize="11" Height="26"
                      Background="{DynamicResource AppInputBackgroundBrush}" Foreground="{DynamicResource AppTextPrimaryBrush}" BorderBrush="{DynamicResource AppInputBorderBrush}" CornerRadius="3"/>
 
@@ -497,7 +497,7 @@
 
                           <!-- Context-Sensitive Inputs -->
                           <!-- String Text Editor -->
-                          <TextBox Text="{Binding StringValue}" Watermark="New Value" IsVisible="{Binding IsTextEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                          <TextBox Text="{Binding StringValue}" PlaceholderText="New Value" IsVisible="{Binding IsTextEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
 
                           <!-- Numeric Editor -->
                           <NumericUpDown Value="{Binding NumericValue}" IsVisible="{Binding IsNumericEditorVisible}" Background="{DynamicResource AppInputBackgroundBrush}"/>
@@ -507,8 +507,8 @@
 
                           <!-- Find & Replace Pair -->
                           <Grid ColumnDefinitions="*, *" IsVisible="{Binding IsReplaceEditorVisible}">
-                            <TextBox Text="{Binding FindValue}" Watermark="Find..." Grid.Column="0" Margin="0,0,4,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
-                            <TextBox Text="{Binding ReplaceValue}" Watermark="Replace with..." Grid.Column="1" Margin="4,0,0,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                            <TextBox Text="{Binding FindValue}" PlaceholderText="Find..." Grid.Column="0" Margin="0,0,4,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
+                            <TextBox Text="{Binding ReplaceValue}" PlaceholderText="Replace with..." Grid.Column="1" Margin="4,0,0,0" Background="{DynamicResource AppInputBackgroundBrush}"/>
                           </Grid>
                         </StackPanel>
                       </Border>
@@ -679,10 +679,10 @@
               <ComboBox ItemsSource="{Binding ReplaceColumns}" SelectedItem="{Binding SelectedReplaceColumn}" HorizontalAlignment="Stretch" Background="{DynamicResource AppInputBackgroundBrush}"/>
 
               <TextBlock Text="Find text" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="11" Margin="0,5,0,0"/>
-              <TextBox Text="{Binding FindText}" Watermark="e.g. Vol 1" Background="{DynamicResource AppInputBackgroundBrush}"/>
+              <TextBox Text="{Binding FindText}" PlaceholderText="e.g. Vol 1" Background="{DynamicResource AppInputBackgroundBrush}"/>
 
               <TextBlock Text="Replace with" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="11" Margin="0,5,0,0"/>
-              <TextBox Text="{Binding ReplaceText}" Watermark="e.g. Volume 1" Background="{DynamicResource AppInputBackgroundBrush}"/>
+              <TextBox Text="{Binding ReplaceText}" PlaceholderText="e.g. Volume 1" Background="{DynamicResource AppInputBackgroundBrush}"/>
 
               <Button Content="Execute Replace" Command="{Binding FindReplaceCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,15,0,0" Padding="10" Background="#0E639C" Foreground="White"/>
               <TextBlock Text="Tip: Applies only to selected rows, or all rows if none are highlighted." Foreground="{DynamicResource AppTextMutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>

@@ -29,7 +29,7 @@
         <TextBlock Grid.Row="1" Grid.Column="0" Text="Template Pattern:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource AppTextPrimaryBrush}" Margin="0,0,12,0"/>
         <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding TemplatePattern, Mode=TwoWay}"
                  Background="{DynamicResource AppInputBackgroundBrush}" Foreground="{DynamicResource AppTextPrimaryBrush}" BorderBrush="{DynamicResource AppInputBorderBrush}" CornerRadius="4" Padding="6,4"
-                 Watermark="e.g. {Series} #{Number:3} ({Year})"/>
+                 PlaceholderText="e.g. {Series} #{Number:3} ({Year})"/>
       </Grid>
     </Border>
 

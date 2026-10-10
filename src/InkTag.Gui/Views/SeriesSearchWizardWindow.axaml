@@ -87,7 +87,7 @@
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
                             <StackPanel Width="400">
                                 <TextBlock Text="Series Title" FontSize="12" Foreground="#A6ADC8" Margin="0,0,0,4"/>
-                                <TextBox x:Name="SeriesTitleTextBox" Watermark="e.g., Amazing Spider-Man, Saga..." KeyDown="SeriesTitleTextBox_KeyDown"/>
+                                <TextBox x:Name="SeriesTitleTextBox" PlaceholderText="e.g., Amazing Spider-Man, Saga..." KeyDown="SeriesTitleTextBox_KeyDown"/>
                             </StackPanel>
                         </StackPanel>
 

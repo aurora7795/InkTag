@@ -14,17 +14,17 @@
         <Grid ColumnDefinitions="*, 100, 100, Auto, Auto">
           <StackPanel Grid.Column="0" Margin="0,0,10,0">
             <TextBlock Text="Series Title:" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"/>
-            <TextBox Name="SeriesTextBox" Watermark="Series..." Background="{DynamicResource AppInputBackgroundBrush}"/>
+            <TextBox Name="SeriesTextBox" PlaceholderText="Series..." Background="{DynamicResource AppInputBackgroundBrush}"/>
           </StackPanel>
 
           <StackPanel Grid.Column="1" Margin="0,0,10,0">
             <TextBlock Text="Issue #:" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"/>
-            <TextBox Name="IssueTextBox" Watermark="Issue #..." Background="{DynamicResource AppInputBackgroundBrush}"/>
+            <TextBox Name="IssueTextBox" PlaceholderText="Issue #..." Background="{DynamicResource AppInputBackgroundBrush}"/>
           </StackPanel>
 
           <StackPanel Grid.Column="2" Margin="0,0,10,0">
             <TextBlock Text="Year:" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"/>
-            <TextBox Name="YearTextBox" Watermark="Year..." Background="{DynamicResource AppInputBackgroundBrush}"/>
+            <TextBox Name="YearTextBox" PlaceholderText="Year..." Background="{DynamicResource AppInputBackgroundBrush}"/>
           </StackPanel>
 
           <Button Name="SearchButton" Grid.Column="3" Content="🔍 Search" Click="Search_Click" VerticalAlignment="Bottom" Padding="15,7" Background="{DynamicResource AppAccentBrush}" Foreground="{DynamicResource AppAccentForegroundBrush}" FontWeight="Bold"/>

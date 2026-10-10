@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependency Vulnerability Fixes**: Upgraded `SixLabors.ImageSharp` from 3.1.7 to 4.1.3, resolving three high-severity and three moderate-severity advisories flagged by NuGet audit (`NU1903`).
 
 ### Changed
+- **Avalonia 12 Upgrade**: Upgraded `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent` to 12.1.4, `Avalonia.Controls.DataGrid` to 12.1.2, and `Tmds.DBus.Protocol` to 0.95.1 (required by Avalonia 12's Linux backend). Kept reflection bindings as the default via `AvaloniaUseCompiledBindingsByDefault=false`, and replaced the obsolete `TextBox.Watermark` with `PlaceholderText`.
 - **Package Updates**: Bumped `SharpCompress` to 0.50.5, `Velopack` to 1.2.161, `Microsoft.Extensions.Hosting` to 10.0.12, and `ModelContextProtocol` to 2.2.0.
 
 ### Added
