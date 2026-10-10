@@ -12,13 +12,25 @@ public class ScrapeResult
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
-    public ComicInfo TargetComic { get; set; } = new();
+
+    /// <summary>
+    /// The raw metadata fetched from the provider for the matched issue. Non-null only when
+    /// <see cref="Success"/> is <c>true</c>. The caller is responsible for merging this into the
+    /// target archive via <see cref="MetadataScraperService.ApplyMetadata"/> with its chosen
+    /// <see cref="ScrapeMergeMode"/> — <see cref="AutoScrapeComicAsync"/> never mutates the
+    /// caller's <see cref="ComicInfo"/>.
+    /// </summary>
+    public ComicInfo? FetchedMetadata { get; set; }
+
     public ComicSearchResult? SelectedCandidate { get; set; }
     public IEnumerable<ComicSearchResult> Candidates { get; set; } = Array.Empty<ComicSearchResult>();
     public bool RequiredUserSelection { get; set; }
+    public bool DetectedIntroPage { get; set; }
+    public int TrueCoverPageIndex { get; set; }
+    public string? IntroPageKey { get; set; }
 }
 
-public class MetadataScraperService
+public class MetadataScraperService : IDisposable
 {
     private readonly AppSettingsService _settingsService;
     private readonly IMetadataScraperProvider _provider;
@@ -30,6 +42,16 @@ public class MetadataScraperService
     }
 
     public void FlushCache() => (_provider as ComicVineProvider)?.FlushCache();
+
+    /// <summary>
+    /// Flushes the provider's scraper cache to disk. Essential for one-shot processes (CLI / MCP
+    /// tool invocations) that exit before the cache's debounced background write can fire.
+    /// </summary>
+    public void Dispose()
+    {
+        (_provider as IDisposable)?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     public async Task<IEnumerable<ComicSearchResult>> SearchCandidatesAsync(ComicSearchQuery query, CancellationToken ct = default)
     {
@@ -47,7 +69,33 @@ public class MetadataScraperService
         {
             try
             {
-                var volumes = (await _provider.SearchSeriesAsync(query.Series, apiKey, ct)).ToList();
+                var searchTitles = new List<string> { query.Series };
+                if (query.Series.StartsWith("Buffy:", StringComparison.OrdinalIgnoreCase))
+                {
+                    searchTitles.Add("Buffy the Vampire Slayer: " + query.Series.Substring(6).Trim());
+                    searchTitles.Add(query.Series.Substring(6).Trim());
+                }
+                else if (query.Series.StartsWith("Buffy, Season", StringComparison.OrdinalIgnoreCase))
+                {
+                    searchTitles.Add(query.Series.Replace("Buffy, Season", "Buffy the Vampire Slayer Season", StringComparison.OrdinalIgnoreCase));
+                }
+                else if (query.Series.Contains(':'))
+                {
+                    var arcPart = query.Series.Split(':')[1].Trim();
+                    if (!string.IsNullOrWhiteSpace(arcPart)) searchTitles.Add(arcPart);
+                }
+
+                var volumes = new List<SeriesSearchResult>();
+                foreach (var title in searchTitles)
+                {
+                    var res = (await _provider.SearchSeriesAsync(title, apiKey, ct)).ToList();
+                    if (res.Count > 0)
+                    {
+                        volumes.AddRange(res);
+                        break;
+                    }
+                }
+
                 var matchingVolume = volumes
                     .Where(v => v.StartYear.HasValue && v.StartYear.Value <= query.Year.Value)
                     .OrderByDescending(v => v.StartYear ?? 0)
@@ -113,8 +161,31 @@ public class MetadataScraperService
         return await _provider.FetchSeriesIssuesAsync(volumeId, apiKey, page, pageSize, query, ct);
     }
 
-    public async Task<ScrapeResult> AutoScrapeComicAsync(ComicInfo existingComic, ulong? localCoverHash = null, string? filePath = null, CancellationToken ct = default)
+    /// <summary>
+    /// Searches the provider for the best match for <paramref name="existingComic"/> (optionally
+    /// disambiguated by cover perceptual hash) and, on a confident match, fetches that issue's
+    /// metadata. <paramref name="existingComic"/> is only read (for the search query) — it is never
+    /// mutated. The fetched metadata is returned on <see cref="ScrapeResult.FetchedMetadata"/>; the
+    /// caller merges it into the archive with its own <see cref="ScrapeMergeMode"/>.
+    /// </summary>
+    public async Task<ScrapeResult> AutoScrapeComicAsync(
+        ComicInfo existingComic,
+        ulong? localCoverHash = null,
+        string? filePath = null,
+        bool enableIntroPageFallback = true,
+        int? targetCoverPageIndex = null,
+        CancellationToken ct = default)
     {
+        var editor = new MetadataEditor();
+        if (targetCoverPageIndex.HasValue && !string.IsNullOrEmpty(filePath))
+        {
+            localCoverHash = editor.GetCoverHash(filePath, targetCoverPageIndex.Value);
+        }
+        else if (!localCoverHash.HasValue && !string.IsNullOrEmpty(filePath))
+        {
+            localCoverHash = editor.GetCoverHash(filePath, 0);
+        }
+
         var query = ExtractQueryFromComicInfo(existingComic, filePath);
         var candidates = (await SearchCandidatesAsync(query, ct)).ToList();
 
@@ -123,10 +194,12 @@ public class MetadataScraperService
             return new ScrapeResult
             {
                 Success = false,
-                Message = $"No matching results found for '{query}' on {_provider.ProviderName}.",
-                TargetComic = existingComic
+                Message = $"No matching results found for '{query}' on {_provider.ProviderName}."
             };
         }
+
+        bool detectedIntroPage = false;
+        int trueCoverPageIndex = targetCoverPageIndex ?? 0;
 
         // If local cover hash is available and auto-visual match is enabled, evaluate candidate cover hashes
         if (localCoverHash.HasValue && localCoverHash.Value != 0 && _settingsService.Settings.AutoApplyOnVisualMatch)
@@ -138,9 +211,9 @@ public class MetadataScraperService
                 {
                     try
                     {
-                        using var client = new System.Net.Http.HttpClient();
-                        client.DefaultRequestHeaders.Add("User-Agent", "InkTag/1.0 (ComicMetadataEditor)");
-                        byte[] bytes = await client.GetByteArrayAsync(coverUrl, ct);
+                        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                        byte[] bytes = await InkTag.Core.Net.SharedHttpClient.Instance.GetByteArrayAsync(coverUrl, timeoutCts.Token);
                         ulong onlineHash = InkTag.Core.Images.PerceptualHashService.ComputeDHash(bytes);
                         candidate.CoverHash = onlineHash;
                         candidate.VisualSimilarity = InkTag.Core.Images.PerceptualHashService.CalculateSimilarity(localCoverHash.Value, onlineHash);
@@ -160,37 +233,86 @@ public class MetadataScraperService
                 .OrderByDescending(c => c.MatchConfidence)
                 .ThenByDescending(c => c.VisualSimilarity ?? 0.0)
                 .ToList();
+
+            var initialTop = candidates.First();
+            double threshold = _settingsService.Settings.AutoMatchConfidenceThreshold;
+
+            // Smart Intro Page Fallback: If Page 0 visual match is weak (< 70%) or below threshold, test Page 1
+            if (enableIntroPageFallback && !targetCoverPageIndex.HasValue && !string.IsNullOrEmpty(filePath) &&
+                ((initialTop.VisualSimilarity ?? 0.0) < 0.70 || initialTop.MatchConfidence < threshold))
+            {
+                ulong page1Hash = editor.GetCoverHash(filePath, pageIndex: 1);
+                if (page1Hash != 0)
+                {
+                    var page1VisualScores = new Dictionary<string, (double Sim, double Conf)>();
+                    foreach (var c in candidates.Where(c => c.CoverHash.HasValue && c.CoverHash.Value != 0))
+                    {
+                        double sim = InkTag.Core.Images.PerceptualHashService.CalculateSimilarity(page1Hash, c.CoverHash!.Value);
+                        double conf = ComicVineProvider.CalculateConfidence(c, query, page1Hash);
+                        page1VisualScores[c.IssueId] = (sim, conf);
+                    }
+
+                    if (page1VisualScores.Count > 0)
+                    {
+                        var bestPage1 = page1VisualScores.OrderByDescending(kv => kv.Value.Sim).First();
+                        double topP0Sim = initialTop.VisualSimilarity ?? 0.0;
+
+                        if (bestPage1.Value.Sim >= 0.85 || (bestPage1.Value.Sim >= 0.70 && bestPage1.Value.Sim > topP0Sim + 0.30))
+                        {
+                            detectedIntroPage = true;
+                            trueCoverPageIndex = 1;
+
+                            foreach (var c in candidates)
+                            {
+                                if (page1VisualScores.TryGetValue(c.IssueId, out var scores))
+                                {
+                                    c.VisualSimilarity = scores.Sim;
+                                    c.MatchConfidence = scores.Conf;
+                                }
+                            }
+
+                            candidates = candidates
+                                .OrderByDescending(c => c.MatchConfidence)
+                                .ThenByDescending(c => c.VisualSimilarity ?? 0.0)
+                                .ToList();
+                        }
+                    }
+                }
+            }
         }
 
         var topMatch = candidates.First();
-        double threshold = _settingsService.Settings.AutoMatchConfidenceThreshold;
+        double autoThreshold = _settingsService.Settings.AutoMatchConfidenceThreshold;
 
-        if (topMatch.MatchConfidence >= threshold)
+        if (topMatch.MatchConfidence >= autoThreshold)
         {
             var fetchedMetadata = await FetchMetadataAsync(topMatch.IssueId, ct);
-            ApplyMetadata(existingComic, fetchedMetadata, _settingsService.Settings.DefaultMergeMode);
 
-            string visualNote = topMatch.VisualSimilarity.HasValue && topMatch.VisualSimilarity.Value >= 0.70 
-                ? $" [Cover Match: {(int)Math.Round(topMatch.VisualSimilarity.Value * 100)}%]" 
+            string introNote = detectedIntroPage ? " [Intro Page Detected; Matched on Page 2 Cover]" : "";
+            string visualNote = topMatch.VisualSimilarity.HasValue && topMatch.VisualSimilarity.Value >= 0.70
+                ? $" [Cover Match: {(int)Math.Round(topMatch.VisualSimilarity.Value * 100)}%]"
                 : "";
 
             return new ScrapeResult
             {
                 Success = true,
-                Message = $"Successfully scraped metadata from '{topMatch.SeriesTitle} #{topMatch.IssueNumber}'{visualNote} (Confidence: {(int)Math.Round(topMatch.MatchConfidence * 100)}%).",
-                TargetComic = existingComic,
+                Message = $"Successfully scraped metadata from '{topMatch.SeriesTitle} #{topMatch.IssueNumber}'{introNote}{visualNote} (Confidence: {(int)Math.Round(topMatch.MatchConfidence * 100)}%).",
+                FetchedMetadata = fetchedMetadata,
                 SelectedCandidate = topMatch,
-                Candidates = candidates
+                Candidates = candidates,
+                DetectedIntroPage = detectedIntroPage,
+                TrueCoverPageIndex = trueCoverPageIndex
             };
         }
 
         return new ScrapeResult
         {
             Success = false,
-            Message = $"Low confidence match ({(int)Math.Round(topMatch.MatchConfidence * 100)}% < threshold {(int)Math.Round(threshold * 100)}%). Manual candidate selection required.",
-            TargetComic = existingComic,
+            Message = $"Low confidence match ({(int)Math.Round(topMatch.MatchConfidence * 100)}% < threshold {(int)Math.Round(autoThreshold * 100)}%). Manual candidate selection required.",
             Candidates = candidates,
-            RequiredUserSelection = true
+            RequiredUserSelection = true,
+            DetectedIntroPage = detectedIntroPage,
+            TrueCoverPageIndex = trueCoverPageIndex
         };
     }
 

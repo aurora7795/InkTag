@@ -145,7 +145,7 @@ public static class UpdateService
                 AppLogger.LogInfo($"Velopack initialization notice ({ex.Message}). Operating in portable mode.");
             }
 
-            if (manager != null && manager.IsInstalled)
+            if (manager != null && IsInstalledMode(manager))
             {
                 try
                 {

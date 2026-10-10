@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --bg:#F3F3F7;--surface:#FFFFFF;--header:#ECECEF;--border:#D1D1D6;--cardborder:#E0E0E6;
+      --ink:#1C1C1E;--ink2:#3A3A3C;--muted:#8E8E93;--accent:#007ACC;
+      --gridline:#E5E5EA;--pillgroup:#EAEAEA;--statusbg:#F8FAFC;--status-muted:#64748B;--status-border:#E2E8F0;--btn-outline:#D1D5DB;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:12px;-webkit-font-smoothing:antialiased}
+    .app{width:1440px;height:900px;display:flex;flex-direction:column;background:var(--bg)}
+    .menubar{height:26px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:0 12px;color:var(--ink2)}
+    .toolbar{height:44px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px}
+    .btn{height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);white-space:nowrap}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .path{flex:1;height:28px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);display:flex;align-items:center;padding:0 10px;color:var(--muted);min-width:0}
+    .filterbar{height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 14px}
+    .pills{display:flex;background:var(--pillgroup);border-radius:8px;padding:3px;gap:3px}
+    .pill{height:24px;display:flex;align-items:center;padding:0 12px;border-radius:6px;color:var(--status-muted)}
+    .pill.on{background:var(--surface);color:#1E293B;font-weight:600}
+    .zoom{display:flex;align-items:center;gap:8px;color:var(--muted);margin-left:auto}
+    .zoom .track{width:90px;height:4px;border-radius:2px;background:var(--gridline);position:relative}
+    .zoom .knob{position:absolute;left:58px;top:-4px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+    .search{height:26px;width:200px;border:1px solid var(--btn-outline);border-radius:6px;background:var(--surface);display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--muted)}
+
+    .body{flex:1;display:flex;min-height:0}
+    .wall{flex:1;padding:18px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-content:start;overflow:hidden;background:var(--bg)}
+    .card{display:flex;flex-direction:column;gap:6px}
+    .thumb{position:relative;width:100%;aspect-ratio:2/3;border-radius:6px;background:linear-gradient(150deg,#E7E7EC,#D9D9E0);border:1px solid var(--cardborder)}
+    .card.sel .thumb{outline:2px solid var(--accent);outline-offset:2px}
+    .card.dirty .thumb{outline:2px solid #34A853;outline-offset:2px}
+    .ribbon{position:absolute;top:8px;left:-1px;background:#D1373C;color:#fff;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:0 4px 4px 0}
+    .cbr{position:absolute;top:8px;right:8px;background:#F4C48A;color:#7A4C00;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+    .cmatch{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.62);color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px}
+    .meta{font-size:10.5px;line-height:1.3}
+    .meta .t{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .meta .s{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .meta .s.wf{height:8px;background:var(--gridline);border-radius:3px;width:60%}
+
+    .drawer{width:380px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+    .dhead{padding:16px 16px 12px;display:flex;gap:14px;border-bottom:1px solid var(--border)}
+    .dcover{width:96px;height:144px;border-radius:6px;background:linear-gradient(150deg,#E7E7EC,#D9D9E0);border:1px solid var(--cardborder);flex:none}
+    .dtitle{font-size:14px;font-weight:700}
+    .dsub{font-size:11px;color:var(--muted);margin-top:2px}
+    .dpill{display:inline-flex;margin-top:8px;font-size:10px;font-weight:700;color:#A12A2A;background:#FDE2E2;padding:2px 7px;border-radius:4px}
+    .dbody{padding:14px 16px;display:flex;flex-direction:column;gap:11px;overflow:hidden}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+    .field .in{height:26px;border:1px solid var(--btn-outline);border-radius:5px;background:var(--surface)}
+    .dact{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+    .dact .btn{flex:1;justify-content:center}
+
+    .statusbar{height:28px;background:var(--statusbg);border-top:1px solid var(--status-border);display:flex;align-items:center;gap:16px;padding:0 12px;font-size:11px;color:var(--status-muted)}
+    .frame-label{position:absolute;left:0;top:-26px;font-size:13px;font-weight:700;color:#1C1C1E}
+    a{color:#007ACC}a:hover{color:#005A99}
+  </style>
+</helmet>
+
+<div class="app">
+    <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span></div>
+    <div class="toolbar">
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open Folder</div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><path d="M5 3h11l3 3v15H5z"/><path d="M9 3v6h6"/></svg>Save All (2)</div>
+      <div class="path">/home/martin/Comics/Vertigo</div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A3A3C" stroke-width="1.7"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/></svg>Grid</div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.7"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</div>
+      <div class="btn primary">Bulk Auto-Tag</div>
+    </div>
+
+    <div class="filterbar">
+      <div class="pills"><div class="pill on">All (312)</div><div class="pill">Untagged (47)</div><div class="pill">Modified (2)</div></div>
+      <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search&hellip;</div>
+      <div class="zoom">Size<span class="track"><span class="knob"></span></span></div>
+    </div>
+
+    <div class="body">
+      <div class="wall">
+        <div class="card sel"><div class="thumb"><span class="ribbon">UNTAGGED</span></div><div class="meta"><div class="t">Sandman #17</div><div class="s wf"></div></div></div>
+        <div class="card"><div class="thumb"><span class="cmatch">Cover 96%</span></div><div class="meta"><div class="t">Y: The Last Man #1</div><div class="s">Unmanned &middot; 2002</div></div></div>
+        <div class="card dirty"><div class="thumb"><span class="cmatch">edited</span></div><div class="meta"><div class="t">Y: The Last Man #2</div><div class="s">2002</div></div></div>
+        <div class="card"><div class="thumb"><span class="cbr">CBR</span></div><div class="meta"><div class="t">Preacher #1</div><div class="s">Gone to Texas &middot; 1995</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">Transmetropolitan #12</div><div class="s">1998</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">100 Bullets #1</div><div class="s">1999</div></div></div>
+        <div class="card dirty"><div class="thumb"></div><div class="meta"><div class="t">Fables #1</div><div class="s">2002</div></div></div>
+        <div class="card"><div class="thumb"><span class="ribbon">UNTAGGED</span></div><div class="meta"><div class="t">scan_099.cbz</div><div class="s wf" style="width:45%"></div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">Hellblazer #41</div><div class="s">1991</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">DMZ #1</div><div class="s">2005</div></div></div>
+        <div class="card"><div class="thumb"><span class="ribbon">UNTAGGED</span></div><div class="meta"><div class="t">img_0442.cbz</div><div class="s wf" style="width:55%"></div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">Scalped #1</div><div class="s">2007</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">The Invisibles #1</div><div class="s">1994</div></div></div>
+        <div class="card"><div class="thumb"><span class="cbr">CBR</span></div><div class="meta"><div class="t">Shade #1</div><div class="s">1990</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">Sweet Tooth #1</div><div class="s">2009</div></div></div>
+        <div class="card"><div class="thumb"><span class="ribbon">UNTAGGED</span></div><div class="meta"><div class="t">unknown_7.cbz</div><div class="s wf" style="width:40%"></div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">American Vampire #1</div><div class="s">2010</div></div></div>
+        <div class="card"><div class="thumb"></div><div class="meta"><div class="t">The Losers #1</div><div class="s">2003</div></div></div>
+      </div>
+
+      <div class="drawer">
+        <div class="dhead">
+          <div class="dcover"></div>
+          <div style="min-width:0">
+            <div class="dtitle">Sandman #17</div>
+            <div class="dsub">Sandman_017.cbz &middot; 24 pages &middot; CBZ</div>
+            <span class="dpill">UNTAGGED &mdash; no ComicInfo.xml</span>
+          </div>
+        </div>
+        <div class="dbody">
+          <div class="field"><label>Series</label><div class="in"></div></div>
+          <div style="display:flex;gap:10px">
+            <div class="field" style="flex:1"><label>Number</label><div class="in" style="background:#F2F7FB"></div></div>
+            <div class="field" style="flex:1"><label>Year</label><div class="in"></div></div>
+          </div>
+          <div class="field"><label>Title</label><div class="in"></div></div>
+          <div class="field"><label>Writer</label><div class="in"></div></div>
+          <div style="font-size:11px;color:var(--muted)">Full metadata &middot; 34 fields &mdash; expand</div>
+        </div>
+        <div class="dact">
+          <div class="btn primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><path d="M6 17v4M4 19h4M13 3l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></svg>Auto-Tag this</div>
+          <div class="btn">Series Wizard</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar"><span>312 comics &middot; 47 untagged &middot; 1 selected</span><span style="margin-left:auto">Komga: connected</span><span>InkTag v0.13.0</span></div>
+  </div>
+
+</x-dc>
+</body>
+</html>

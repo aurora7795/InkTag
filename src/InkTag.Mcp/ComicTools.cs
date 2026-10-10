@@ -147,9 +147,10 @@ public static class ComicTools
         }
     }
 
-    [McpServerTool, Description("Extracts front cover art from a comic archive for multimodal vision inspection.")]
+    [McpServerTool, Description("Extracts front cover or specific page art from a comic archive for multimodal vision inspection.")]
     public static object ExtractCoverImage(
         [Description("Path to comic archive (.cbz / .cbr)")] string path,
+        [Description("0-based page index to extract (default 0 for cover)")] int pageIndex = 0,
         [Description("Optional destination file path for image")] string? outputPath = null,
         [Description("If true, returns base64 encoded image bytes")] bool returnBase64 = false)
     {
@@ -161,13 +162,14 @@ public static class ComicTools
 
         if (string.IsNullOrEmpty(outputPath))
         {
-            outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_cover.jpg");
+            string suffix = pageIndex > 0 ? $"_page{pageIndex + 1}.jpg" : "_cover.jpg";
+            outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{suffix}");
         }
 
-        string? extracted = _editor.ExtractCoverImage(path, outputPath);
+        string? extracted = _editor.ExtractCoverImage(path, outputPath, pageIndex);
         if (extracted == null || !File.Exists(extracted))
         {
-            throw new InvalidOperationException("Failed to extract cover image.");
+            throw new InvalidOperationException($"Failed to extract image at page index {pageIndex}.");
         }
 
         if (returnBase64)
@@ -180,7 +182,7 @@ public static class ComicTools
             {
                 content = new object[]
                 {
-                    new { type = "text", text = $"Cover extracted to {extracted}" },
+                    new { type = "text", text = $"Page {pageIndex + 1} extracted to {extracted}" },
                     new
                     {
                         type = "image",
@@ -192,6 +194,43 @@ public static class ComicTools
         }
 
         return $"Cover image extracted to: {extracted}";
+    }
+
+    [McpServerTool, Description("Removes a specific page (or provider title/intro page at index 0) from a comic archive. Defaults to dryRun=true (preview only). Set dryRun=false to commit the removal.")]
+    public static string RemoveComicPage(
+        [Description("Path to comic archive (.cbz / .cbr)")] string path,
+        [Description("0-based page index to remove (default 0 for first page)")] int pageIndex = 0,
+        [Description("If true (default), previews removal without modifying files on disk. Set dryRun=false to remove the page and repack the archive.")] bool dryRun = true)
+    {
+        ValidatePathAccess(path);
+        if (!dryRun)
+        {
+            EnsureWriteAccess("RemoveComicPage");
+        }
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException($"Comic file not found: {path}");
+        }
+
+        if (dryRun)
+        {
+            var entries = _editor.GetImageEntries(path);
+            string? targetEntry = pageIndex >= 0 && pageIndex < entries.Count ? entries[pageIndex] : null;
+            return JsonSerializer.Serialize(new
+            {
+                success = true,
+                dryRun = true,
+                filePath = path,
+                pageIndex,
+                targetEntry,
+                originalPageCount = entries.Count,
+                finalPageCount = Math.Max(0, entries.Count - 1)
+            }, new JsonSerializerOptions { WriteIndented = true });
+        }
+
+        var result = _editor.RemoveArchivePages(path, new[] { pageIndex });
+        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
     }
 
     [McpServerTool, Description("Scans a directory for comic archives and checks for missing metadata fields or untagged comics.")]
@@ -246,7 +285,7 @@ public static class ComicTools
             settingsService.Settings.ComicVineApiKey = apiKey;
         }
 
-        var service = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
+        using var service = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
         var query = new InkTag.Core.Scrapers.ComicSearchQuery
         {
             Series = series,
@@ -258,10 +297,13 @@ public static class ComicTools
         return JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool, Description("Scrapes and applies metadata from ComicVine to a local comic archive. Defaults to dryRun=true (preview only). Set dryRun=false to commit changes.")]
+    [McpServerTool, Description("Scrapes and applies metadata from ComicVine to a local comic archive with smart intro page detection. Defaults to dryRun=true (preview only). Set dryRun=false to commit changes.")]
     public static string ScrapeComicMetadata(
         [Description("Path to comic archive (.cbz / .cbr)")] string path,
         [Description("Merge mode: 'fill-missing' (default) or 'overwrite'")] string mode = "fill-missing",
+        [Description("Optional 0-based page index to use for cover matching")] int? coverPageIndex = null,
+        [Description("Whether to automatically detect provider intro pages on page 1")] bool detectIntroPage = true,
+        [Description("Whether to strip detected provider intro page when saving metadata")] bool stripIntroPage = false,
         [Description("If true (default), previews updates without writing to disk. Set dryRun=false to write changes.")] bool dryRun = true,
         [Description("Optional ComicVine API key")] string? apiKey = null)
     {
@@ -277,39 +319,71 @@ public static class ComicTools
             settingsService.Settings.ComicVineApiKey = apiKey;
         }
 
-        var service = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
+        using var service = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
         var comic = _editor.ReadMetadata(path);
-        ulong coverHash = _editor.GetCoverHash(path);
-        var result = service.AutoScrapeComicAsync(comic, coverHash != 0 ? coverHash : null, path).GetAwaiter().GetResult();
+        ulong coverHash = _editor.GetCoverHash(path, coverPageIndex ?? 0);
+        var result = service.AutoScrapeComicAsync(
+            comic,
+            coverHash != 0 ? coverHash : null,
+            path,
+            enableIntroPageFallback: detectIntroPage,
+            targetCoverPageIndex: coverPageIndex).GetAwaiter().GetResult();
 
-        if (result.Success && !dryRun)
+        var mergeMode = string.Equals(mode, "overwrite", StringComparison.OrdinalIgnoreCase)
+            ? InkTag.Core.Scrapers.ScrapeMergeMode.OverwriteAll
+            : InkTag.Core.Scrapers.ScrapeMergeMode.FillMissingOnly;
+
+        // Report the fetched metadata merged under the requested mode; re-read after a real write.
+        var reportComic = comic;
+        var fetched = result.FetchedMetadata;
+
+        if (result.Success && fetched != null)
         {
-            var mergeMode = string.Equals(mode, "overwrite", StringComparison.OrdinalIgnoreCase)
-                ? InkTag.Core.Scrapers.ScrapeMergeMode.OverwriteAll
-                : InkTag.Core.Scrapers.ScrapeMergeMode.FillMissingOnly;
+            if (!dryRun)
+            {
+                if (stripIntroPage && result.DetectedIntroPage)
+                {
+                    _editor.StripFirstPage(path);
+                }
 
-            _editor.EditMetadata(path, existing => service.ApplyMetadata(existing, comic, mergeMode));
+                _editor.EditMetadata(
+                    path,
+                    existing => service.ApplyMetadata(existing, fetched, mergeMode),
+                    changeReason: "Scraped ComicVine metadata",
+                    coverDHash: coverHash != 0 ? coverHash.ToString("X16") : null,
+                    matchedThumbnailUrl: !string.IsNullOrEmpty(result.SelectedCandidate?.SmallCoverUrl) ? result.SelectedCandidate.SmallCoverUrl : result.SelectedCandidate?.CoverUrl,
+                    matchConfidence: result.SelectedCandidate?.MatchConfidence,
+                    visualSimilarity: result.SelectedCandidate?.VisualSimilarity);
+
+                reportComic = _editor.ReadMetadata(path);
+            }
+            else
+            {
+                reportComic = comic.Clone();
+                service.ApplyMetadata(reportComic, fetched, mergeMode);
+            }
         }
 
         return JsonSerializer.Serialize(new
         {
             success = result.Success,
             message = result.Message,
-            confidence = result.SelectedCandidate?.MatchConfidence,
-            visualSimilarity = result.SelectedCandidate?.VisualSimilarity,
-            isVisualMatch = result.SelectedCandidate?.VisualSimilarity >= 0.90,
+            detectedIntroPage = result.DetectedIntroPage,
+            trueCoverPageIndex = result.TrueCoverPageIndex,
             dryRun,
             path,
-            title = comic.Title,
-            series = comic.Series,
-            writer = comic.Writer
+            title = reportComic.Title,
+            series = reportComic.Series,
+            writer = reportComic.Writer
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool, Description("Queues and executes a bulk scrape on a folder using smart series volume clustering and perceptual cover visual matching. Defaults to dryRun=true (preview only). Set dryRun=false to commit changes.")]
+    [McpServerTool, Description("Queues and executes a bulk scrape on a folder using smart series volume clustering, perceptual cover visual matching, and intro page fallback. Defaults to dryRun=true (preview only). Set dryRun=false to commit changes.")]
     public static string BulkScrapeDirectory(
         [Description("Directory path containing comic archives")] string directory,
         [Description("Merge mode: 'fill-missing' (default) or 'overwrite'")] string mode = "fill-missing",
+        [Description("Whether to automatically detect provider intro pages on page 1")] bool detectIntroPage = true,
+        [Description("Whether to strip detected provider intro pages on save")] bool stripIntroPages = false,
         [Description("If true (default), previews updates without writing to archives on disk. Set dryRun=false to write changes.")] bool dryRun = true,
         [Description("If true, scans subdirectories recursively")] bool recursive = false,
         [Description("Optional ComicVine API key")] string? apiKey = null)
@@ -336,7 +410,7 @@ public static class ComicTools
             .Where(MetadataEditor.IsSupportedComicFile)
             .ToList();
 
-        var scraperService = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
+        using var scraperService = new InkTag.Core.Scrapers.MetadataScraperService(settingsService);
         var queueService = new InkTag.Core.Scrapers.BulkScrapeQueueService(scraperService, _editor, settingsService);
         var queue = queueService.CreateQueue(files);
 
@@ -348,7 +422,9 @@ public static class ComicTools
         {
             MergeMode = mergeMode,
             ConfidenceThreshold = settingsService.Settings.AutoMatchConfidenceThreshold,
-            EnableSmartSeriesGrouping = true
+            EnableSmartSeriesGrouping = true,
+            EnableIntroPageFallback = detectIntroPage,
+            StripDetectedIntroPages = stripIntroPages
         };
 
         var summaryReport = queueService.ProcessQueueAsync(queue, options).GetAwaiter().GetResult();
@@ -356,7 +432,7 @@ public static class ComicTools
 
         if (!dryRun)
         {
-            queueService.ApplyMatchedMetadataAsync(queue, mergeMode, batchJobId: batchJobId).GetAwaiter().GetResult();
+            queueService.ApplyMatchedMetadataAsync(queue, mergeMode, stripDetectedIntroPages: stripIntroPages, batchJobId: batchJobId).GetAwaiter().GetResult();
         }
 
         return JsonSerializer.Serialize(new
@@ -378,6 +454,7 @@ public static class ComicTools
                 issueTitle = i.MatchedCandidate?.IssueTitle,
                 visualSimilarity = i.MatchedCandidate?.VisualSimilarity,
                 matchConfidence = i.MatchedCandidate?.MatchConfidence,
+                detectedIntroPage = i.DetectedIntroPage,
                 message = i.StatusMessage
             })
         }, new JsonSerializerOptions { WriteIndented = true });

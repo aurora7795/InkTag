@@ -11,17 +11,17 @@ The solution is organized into standard `src/` and `tests/` layers:
    * Provides domain models (`ComicInfo`), schema validation (`ComicInfo.xsd`), dynamic JSON patching, in-memory streaming, and atomic archive repackaging (`MetadataEditor` façade delegating to `ComicArchiveHandler`, `ArchiveSwapService`, and `ComicInfoXmlSanitizer`).
    * Provides domain error classifications under `InkTag.Core.Exceptions` (`InkTagException`, `ComicArchiveException`, `ComicArchiveCorruptException`, `MetadataXmlSanitizationException`, `UnsafeArchiveEntryException`).
    * Provides supplementary domain services:
-     * **`MetadataBackupService`**: Automated pre-write snapshots, atomic multi-file transaction rollbacks (`BatchJobId`), forensic provenance audit trails, and automatic retention management in isolated AppData (`~/.local/share/InkTag/backups/`).
+     * **`MetadataBackupService`**: Automated pre-write snapshots, multi-file batch rollbacks (`BatchJobId`; best-effort per file — see [#21](https://github.com/aurora7795/InkTag/issues/21)), forensic provenance audit trails, and automatic retention management in isolated AppData (`~/.local/share/InkTag/backups/`).
      * **`ComicFilenameParser`**: Smart filename and 2-level ancestor directory metadata inference.
      * **`PerceptualHashService`**: 64-bit difference perceptual image hashing (`dHash`) and visual cover matching.
-     * **`MetadataScraperService` & `ComicVineProvider`**: ComicVine REST scraping with smart volume lifespan year scoring, caching, and rate limiting.
+     * **`MetadataScraperService` & `ComicVineProvider`**: ComicVine REST scraping with smart volume lifespan year scoring, caching, and rate limiting. Both are `IDisposable` and flush the debounced response cache on dispose; all outbound traffic uses the pooled `InkTag.Core.Net.SharedHttpClient` singleton.
      * **`BulkScrapeQueueService`**: Pipelined parallel cover extraction, on-demand candidate thumbnail hashing, and queue resolution.
      * **`ComicFileRenamer`**: Token-based file renaming engine with collision resolution.
      * **`KomgaClient` & `KomgaSyncService`**: Direct Komga media server REST API synchronization with collections management and Docker/NAS path translation.
 2. **`InkTag.Cli` (Agentic CLI Utility)**: Allows scanning folders, structured `--json` execution, reading, updating, renaming, scraping, cover extraction, and schema exporting from the command line.
-3. **`InkTag.Mcp` (MCP Server)**: Exposes 14 Model Context Protocol stdio tools for AI agents (Claude Desktop, Cursor, Antigravity) with strict read-only mode, safe-by-default dry runs, and forensic backup restoration. Published as a single-file executable (`PublishSingleFile=true`) and bundled inside application packages.
+3. **`InkTag.Mcp` (MCP Server)**: Exposes 18 Model Context Protocol stdio tools for AI agents (Claude Desktop, Claude Code, Cursor, Antigravity) with strict read-only mode, safe-by-default dry runs, and forensic backup restoration. Published as a single-file executable (`PublishSingleFile=true`) and bundled inside application packages.
 4. **`InkTag.Gui` (InkTag Desktop)**: Multi-platform visual spreadsheet and bulk-edit panel built with Avalonia UI. Features dynamic Light/Dark/System theme switching, bounded parallel scanning, Series Search Wizard, Bulk Auto-Tag queue with visual breakdown tooltips, Komga synchronization, and Velopack auto-updating.
-5. **`InkTag.Tests` (Test Suite)**: Comprehensive xUnit test suite (184 unit & integration tests).
+5. **`InkTag.Tests` (Test Suite)**: Comprehensive xUnit unit & integration test suite (211 tests).
 
 ```mermaid
 graph TD
@@ -105,6 +105,8 @@ Modifying compressed archives uses atomic repackaging:
 
 InkTag includes a centralized, cross-platform thread-safe logging infrastructure (`AppLogger` in `InkTag.Core.Logging`).
 
+Console mirroring goes to **stderr** (`Console.Error`), never stdout. `InkTag.Mcp` speaks JSON-RPC over stdout and `InkTag.Cli` reserves stdout for its own `--json` output, so any log line on stdout would corrupt machine-readable consumers. The file sink is always the authoritative log.
+
 ### Log Locations Across Platforms
 - **Linux**: `~/.local/share/InkTag/logs/InkTag.log`
 - **Windows**: `%LocalAppData%\InkTag\logs\InkTag.log`
@@ -115,5 +117,6 @@ Velopack auto-updater system logs are stored in the parent `InkTag` directory (e
 ### Diagnostics & Auto-Updater Diagnostics
 - `UpdateService` logs update check requests, GitHub release queries, rate limiting status, and download progress.
 - `UpdateService.CheckForUpdatesAsync()` returns structured `UpdateCheckResult` detailing status (`UpdateAvailable`, `UpToDate`, `UninstalledDevBuild`, or `Failed`).
+- **Install detection**: both the update-check step and the download/apply step gate on `UpdateService.IsInstalledMode(manager)`, not Velopack's own `manager.IsInstalled`. Velopack's native property only recognizes a Squirrel-style Windows install; `IsInstalledMode` additionally recognizes a macOS `.app` bundle (`sq.version` next to the executable or under `../Resources/`) and a Linux AppImage (`$APPIMAGE` env var set), which is what lets in-place Velopack updates run on those platforms instead of always falling back to opening the GitHub Releases page in a browser.
 - Running uninstalled/dev builds explicitly logs warnings and displays *"Update check unavailable (Uninstalled dev build)"* to prevent confusion with failed network checks.
 

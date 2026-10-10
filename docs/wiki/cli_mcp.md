@@ -21,8 +21,10 @@ dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- <command> [options]
 | `update` | `update <file\|dir> --patch '<json>' [--dry-run] [--recursive]` | Applies JSON property edits to a single archive or all archives in a directory. |
 | `rename` | `rename <file\|dir> [--template '<pattern>'] [--preserve-scans] [--dry-run] [--recursive]` | Renames comic archives on disk based on their embedded metadata. |
 | `scan` | `scan <directory> [--untagged] [--missing Field1,Field2] [--recursive]` | Scans a directory for comic files, untagged archives, and missing metadata fields. |
-| `cover` | `cover <file> [--output <image-path>]` | Extracts front cover image from comic archive. |
-| `scrape` | `scrape <file\|dir> [--api-key KEY] [--mode fill-missing\|overwrite] [--dry-run] [--recursive]` | Auto-tags metadata from ComicVine using cover perceptual dHash visual matching and smart series grouping. |
+| `cover` | `cover <file> [--page <n>] [--output <image-path>]` | Extracts the front cover (or a specific page) image from a comic archive. |
+| `scrape` | `scrape <file\|dir> [--api-key KEY] [--mode fill-missing\|overwrite] [--cover-page <n>] [--strip-intro-page] [--dry-run] [--recursive]` | Auto-tags metadata from ComicVine using cover perceptual dHash visual matching and smart series grouping. |
+| `strip-intro` | `strip-intro <file\|dir> [--recursive] [--dry-run]` | Strips the first page (provider/scanner title page) from archive(s). |
+| `remove-page` | `remove-page <file> --index <n> [--dry-run]` | Removes a specific page by 0-based index from an archive. |
 | `schema` | `schema` | Prints the JSON Schema specification for `ComicInfo` metadata objects. |
 | `help` | `help` / `--help` / `-h` | Displays usage instructions and subcommand options. |
 
@@ -54,9 +56,10 @@ Updates metadata properties in a comic archive or directory using a JSON patch.
   - `recursive` (boolean, optional): If `true`, applies edits to nested subdirectories.
 
 #### 3. `extract_cover_image`
-Extracts front cover art from a comic archive for multimodal vision inspection.
+Extracts the front cover (or a specific page) from a comic archive for multimodal vision inspection.
 - **Parameters**:
   - `path` (string, required): Path to comic archive (.cbz / .cbr).
+  - `pageIndex` (integer, optional): 0-based page index to extract (default `0` / cover).
   - `outputPath` (string, optional): Destination file path.
   - `returnBase64` (boolean, optional): Returns base64 encoded image data.
 
@@ -112,25 +115,50 @@ Lists all historical pre-write metadata backups stored for a specific comic arch
   - `path` (string, optional): Filter history to a specific comic file path.
 
 #### 11. `restore_comic_backup`
-Rolls back a comic archive's metadata to a previous timestamped snapshot from the local backup store.
+Rolls back a comic archive's `ComicInfo.xml` to a previous snapshot from the local backup store.
 - **Parameters**:
   - `path` (string, required): Path to the comic archive to restore.
-  - `timestamp` (string, required): Exact snapshot timestamp or ISO-8601 string to restore.
+  - `backupId` (string, optional): Specific backup snapshot ID. Defaults to the most recent snapshot for this archive.
 
 #### 12. `list_batch_jobs`
-Lists all recorded multi-file batch operations (such as bulk auto-tags or directory updates) available for atomic rollback.
-- **Parameters**: None
+Lists recorded multi-file batch operations (such as bulk auto-tags or directory updates) available for rollback.
+- **Parameters**:
+  - `limit` (integer, optional): Maximum number of batch records to return (default `20`).
 
 #### 13. `restore_batch_job`
-Atomically rolls back all comic archives modified in a multi-file batch job back to their exact pre-write snapshot states.
+Restores every comic archive modified in a multi-file batch job to its pre-batch `ComicInfo.xml` snapshot, continuing past individual failures. Returns a report with the restored files and any failures. **Not transactional** — a mid-run failure can leave the batch partially restored ([#21](https://github.com/aurora7795/InkTag/issues/21)).
 - **Parameters**:
   - `batchJobId` (string, required): Unique batch job identifier (e.g. `batch_20260822_123456_a4f910`).
 
 #### 14. `get_backup_provenance`
 Retrieves forensic provenance metadata for a specific backup snapshot, including pre-write source SHA-256 hash, 64-bit cover visual dHash, matched thumbnail URL, confidence score, and property diffs.
 - **Parameters**:
-  - `path` (string, required): Path to the comic archive.
-  - `timestamp` (string, required): Snapshot timestamp.
+  - `backupId` (string, required): Backup snapshot ID.
+
+#### 15. `remove_comic_page`
+Removes a specific page (or the provider/scanner title page at index `0`) from a comic archive, decrements `ComicInfo.xml` `PageCount`, renumbers the `Pages` collection, and repacks the archive (`.cbr` inputs become `.cbz`).
+- **Parameters**:
+  - `path` (string, required): Path to comic archive (.cbz / .cbr).
+  - `pageIndex` (integer, optional): 0-based page index to remove (default `0`).
+  - `dryRun` (boolean, optional): Previews the removal without modifying files on disk (default: `true`). Set `dryRun = false` to commit; this is a mutating operation and is blocked in strict read-only mode.
+
+#### 16. `check_komga_server`
+Tests connectivity and authentication against a Komga media server and lists its library roots.
+- **Parameters**:
+  - `serverUrl` (string, optional): Server URL override (else `KOMGA_SERVER_URL` / settings).
+  - `apiKey` (string, optional): API key override.
+- **Transient failure retries**: [`KomgaClient`](core_editor_api.md) retries a connection attempt up to 2 extra times (3 total, 750ms apart) when it hits a transient network error (`HttpRequestException`, `SocketException`, or an `IOException` wrapping a `SocketException` — e.g. "No route to host" during a brief reachability blip on the machine running the MCP host). Non-transient outcomes (HTTP 401/403, DNS failure, timeout beyond the underlying `HttpClient`'s own 15s timeout) are not retried and surface immediately.
+
+#### 17. `sync_komga_book_or_series`
+Triggers targeted Komga cache invalidation / re-analysis for a local file or folder, with optional StoryArc → Collection sync.
+- **Parameters**:
+  - `path` (string, required): Local file or folder path to synchronize.
+  - `storyArc` (string, optional): StoryArc name to sync into a Komga Collection.
+
+#### 18. `audit_komga_library`
+Lists Komga books flagged `UNSUPPORTED` or `ERROR` (unreadable / needing repair or metadata tagging).
+- **Parameters**:
+  - `libraryId` (string, optional): Restrict the audit to one Komga library.
 
 ---
 
@@ -138,12 +166,15 @@ Retrieves forensic provenance metadata for a specific backup snapshot, including
 
 ### 1. Strict Read-Only Mode (`INKTAG_MCP_READ_ONLY=true` / `--read-only`)
 When invoked with the `--read-only` command-line flag or when the `INKTAG_MCP_READ_ONLY=true` environment variable is set:
-- All mutating operations (`update_comic_metadata`, `rename_comic_files`, `scrape_comic_metadata`, `bulk_scrape_directory`, `restore_comic_backup`, `restore_batch_job`) are strictly disabled.
-- Any attempt by an AI agent to execute write operations immediately returns an `UnauthorizedAccessException` with descriptive guidance.
-- Read-only analysis and inspection tools remain fully accessible.
+- All mutating operations (`update_comic_metadata`, `rename_comic_files`, `scrape_comic_metadata`, `bulk_scrape_directory`, `remove_comic_page`, `restore_comic_backup`, `restore_batch_job`) are strictly disabled.
+- Every mutating tool calls `EnsureWriteAccess(...)` before touching disk; any attempt by an AI agent to execute a write operation immediately returns an `UnauthorizedAccessException` with descriptive guidance.
+- Read-only analysis and inspection tools (including any mutating tool invoked with `dryRun = true`) remain fully accessible.
 
 ### 2. Safe-by-Default Dry Runs
-All mutating MCP tools default to `dryRun = true`. AI agents must explicitly pass `dryRun = false` in tool invocations to commit changes to disk.
+All mutating MCP tools — `update_comic_metadata`, `rename_comic_files`, `scrape_comic_metadata`, `bulk_scrape_directory`, and `remove_comic_page` — default to `dryRun = true`. AI agents must explicitly pass `dryRun = false` in tool invocations to commit changes to disk.
 
 ### 3. Automated Pre-Write Disaster Recovery Backups
 Whenever a mutation occurs (`dryRun = false`), `MetadataBackupService` automatically takes an atomic snapshot of the pre-write `ComicInfo.xml`, computes source SHA-256 and cover dHash fingerprints, and records the change in `~/.local/share/InkTag/backups/manifest.json`.
+
+### 4. Protocol Stream Isolation
+The stdio transport uses **stdout** exclusively for framed JSON-RPC messages. All diagnostic output is routed to **stderr**: `AppLogger` writes to `Console.Error`, and the host logging pipeline is configured with `LogToStandardErrorThreshold = LogLevel.Trace` in `Program.cs`. No log line, banner, or startup message is ever written to stdout, so diagnostic output cannot corrupt the protocol stream.
