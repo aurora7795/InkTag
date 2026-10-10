@@ -86,7 +86,7 @@ Because pre-built `.dmg` releases are not notarized:
 ## 🤖 AI Agent & MCP Integration
 
 ### 1. Model Context Protocol (MCP) Server
-InkTag includes a high-performance, official **`ModelContextProtocol` C# SDK** (`v2.1.0`) server that connects AI assistants directly to your comic library for automated cataloging, auditing, visual verification, and Komga sync.
+InkTag includes a high-performance, official **`ModelContextProtocol` C# SDK** (`v2.2.0`) server that connects AI assistants directly to your comic library for automated cataloging, auditing, visual verification, and Komga sync.
 
 #### 🚀 Quick-Start Configuration
 Add the configuration block below to your AI client (**Claude Desktop**, **Claude Code**, **Cursor**, **Windsurf**, **Cline**, or **Antigravity**):
@@ -271,7 +271,7 @@ bool isMatch = PerceptualHashService.IsVisualMatch(coverHash, onlineCoverHash, t
 * **[x] Perceptual Cover Hashing & Visual Matching (`v0.8.0`):** 64-bit `dHash` image fingerprinting, live cover match badging (`👁 XX% Cover Match`), and Visual Override matching for unorganized files.
 * **[x] Series Search Wizard (`v0.7.0`):** 2-step volume and issue search wizard with natural numerical ordering (`1, 2, 3... 10, 11`) and quick apply workflows.
 * **[x] ComicVine Metadata Scraper System:** Built-in provider with caching, rate-limited HTTP client, field-by-field diff comparison, and selective merge policies.
-* **[x] Official Tier-1 MCP C# SDK Integration:** Powered by the official `ModelContextProtocol` C# SDK (`v2.1.0`) with declarative tools and rich visual verification returns.
+* **[x] Official Tier-1 MCP C# SDK Integration:** Powered by the official `ModelContextProtocol` C# SDK (`v2.2.0`) with declarative tools and rich visual verification returns.
 * **[x] Cross-Platform MenuBar & NativeMenu:** Menu and toolbar navigation with hotkeys and macOS system menu integration.
 * **[x] Velopack Auto-Updater & Portable Fallback:** Automated cross-platform updates for Windows, macOS, and Linux AppImages.
 * **[x] Archive Security Hardening:** Strict ZipSlip defense and atomic file swapping with `.bak` rollbacks.
