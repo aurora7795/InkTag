@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.14.1] - 2026-10-11
+
+### Fixed
+- **Release Build Failure**: `v0.14.0` could not be released because `SixLabors.ImageSharp` 4.x fails Release builds without a license key. Replacing ImageSharp (below) restores the Release workflow; `0.14.0` was never published, so `0.14.1` carries everything from `0.14.0` as well.
+
+### Changed
+- **Image Library Migration (ImageSharp ➔ SkiaSharp)**: `PerceptualHashService` now decodes covers with SkiaSharp (MIT) and reduces them to the 9x8 dHash grid by exact area-averaged luminance, replacing `SixLabors.ImageSharp`. ImageSharp 4.x requires a commercial/community license key for Release builds (which broke the `v0.14.0` release workflow), and its security fixes only exist in 4.x. Cover-match similarity is as robust as before (same-cover re-scales stay within the match threshold, no false matches across different covers), but hash values are not bit-identical to previous versions, so `CoverDHash` values stored in older metadata backups are not directly comparable.
+
+### Security
+- **Removed Vulnerable Dependency**: Dropped `SixLabors.ImageSharp`, eliminating its open high/moderate advisories (`NU1903`) from the dependency tree.
+
+---
+
 ## [0.14.0] - 2026-10-11
 
 ### Added

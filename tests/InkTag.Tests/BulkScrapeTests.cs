@@ -11,8 +11,7 @@ using InkTag.Core.Scrapers;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Zip;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 using Xunit;
 
 namespace InkTag.Tests;
@@ -68,9 +67,11 @@ public class BulkScrapeTests
         try
         {
             // Create a small valid test JPEG image
-            using (var image = new Image<Rgb24>(64, 96))
+            using (var bitmap = new SKBitmap(64, 96))
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SKEncodedImageFormat.Jpeg, 90))
             {
-                image.SaveAsJpeg(imgPath);
+                File.WriteAllBytes(imgPath, data.ToArray());
             }
 
             using (var fs = File.OpenWrite(cbzPath))
