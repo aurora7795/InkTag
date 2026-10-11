@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using InkTag.Core;
 using InkTag.Core.Configuration;
 using InkTag.Core.Scrapers;
-using SixLabors.ImageSharp;
+using SkiaSharp;
 using Xunit;
 
 namespace InkTag.Tests;
@@ -417,23 +417,19 @@ public class ScraperTests
     public void PerceptualHashService_ComputesIdenticalHashForIdenticalImages()
     {
         // Generate a 100x100 checkerboard pattern image
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(100, 100);
+        using var bitmap = new SKBitmap(100, 100);
         for (int y = 0; y < 100; y++)
         {
             for (int x = 0; x < 100; x++)
             {
                 byte val = (byte)(((x / 10) % 2 == (y / 10) % 2) ? 240 : 20);
-                image[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgba32(val, val, val);
+                bitmap.SetPixel(x, y, new SKColor(val, val, val));
             }
         }
 
-        using var ms1 = new MemoryStream();
-        image.SaveAsPng(ms1);
-        ms1.Position = 0;
-
-        using var ms2 = new MemoryStream();
-        image.SaveAsJpeg(ms2);
-        ms2.Position = 0;
+        using var skImage = SKImage.FromBitmap(bitmap);
+        using var ms1 = new MemoryStream(skImage.Encode(SKEncodedImageFormat.Png, 100).ToArray());
+        using var ms2 = new MemoryStream(skImage.Encode(SKEncodedImageFormat.Jpeg, 90).ToArray());
 
         ulong hashPng = InkTag.Core.Images.PerceptualHashService.ComputeDHash(ms1);
         ulong hashJpeg = InkTag.Core.Images.PerceptualHashService.ComputeDHash(ms2);
