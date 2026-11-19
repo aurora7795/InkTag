@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Numerics;
+using InkTag.Core.Logging;
 using SkiaSharp;
 
 namespace InkTag.Core.Images;
@@ -12,6 +13,11 @@ public static class PerceptualHashService
 {
     private const int HashWidth = 9;
     private const int HashHeight = 8;
+
+    /// <summary>
+    /// Maximum allowable pixel count (~40 MP) for perceptual hash decoding to prevent decompression bomb denial of service.
+    /// </summary>
+    public const long MaxPixelCount = 40_000_000;
 
     /// <summary>
     /// Computes a 64-bit difference hash (dHash) from an image byte array.
@@ -26,6 +32,7 @@ public static class PerceptualHashService
     /// <summary>
     /// Computes a 64-bit difference hash (dHash) from an image stream.
     /// Reduces the image to a 9x8 grayscale grid (area-averaged) and computes horizontal luminance gradients.
+    /// Rejects images exceeding <see cref="MaxPixelCount"/> before full decoding to guard against decompression bombs.
     /// </summary>
     public static ulong ComputeDHash(Stream imageStream)
     {
@@ -33,7 +40,22 @@ public static class PerceptualHashService
 
         try
         {
-            using var bitmap = SKBitmap.Decode(imageStream);
+            using var codec = SKCodec.Create(imageStream);
+            if (codec == null) return 0;
+
+            long width = codec.Info.Width;
+            long height = codec.Info.Height;
+
+            if (width <= 0 || height <= 0) return 0;
+
+            long pixelCount = width * height;
+            if (pixelCount > MaxPixelCount)
+            {
+                AppLogger.LogWarning($"Perceptual hash skipped: image dimensions {width}x{height} ({pixelCount:N0} pixels) exceed safety ceiling of {MaxPixelCount:N0} pixels.");
+                return 0;
+            }
+
+            using var bitmap = SKBitmap.Decode(codec);
             if (bitmap == null || bitmap.Width == 0 || bitmap.Height == 0) return 0;
 
             var luma = ToLuma(bitmap);
@@ -56,9 +78,9 @@ public static class PerceptualHashService
 
             return hash;
         }
-        catch
+        catch (Exception ex)
         {
-            // If image decoding fails, return 0
+            AppLogger.LogWarning($"Perceptual hash computation failed: {ex.Message}");
             return 0;
         }
     }

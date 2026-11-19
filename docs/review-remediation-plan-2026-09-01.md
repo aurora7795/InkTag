@@ -277,8 +277,8 @@ The finding is really two smaller things:
 - [x] **L7** `ComicFileRenamer.SanitizeFilename` — reject/rewrite Windows reserved device names
       (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) and trim trailing dots/spaces;
       add `RenamingTests` cases. (Fixed in #35).
-- [ ] **L9** `PerceptualHashService.ComputeDHash` — `Image.Identify` first and reject images over
-      ~40 MP before `Image.Load<L8>`.
+- [x] **L9** `PerceptualHashService.ComputeDHash` — inspect codec dimensions first and reject images over
+      ~40 MP before full bitmap allocation. Fixed in #40.
 
 ---
 
@@ -344,3 +344,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | M5 resolved (#33): added `BulkScrapeOptions.DiscardCoverBytesAfterHash` and updated visual match ViewModel binding to release raw cover byte buffers post-hash computation. |
 | 2026-11-19 | L8 resolved (#22): migrated `InkTag.Cli` to `System.CommandLine`, adding `--option=value` support, typed argument binding, and comprehensive CLI integration tests. |
 | 2026-11-19 | L5 resolved (#39): introduced `InkTagVersion.Current` for dynamic assembly version resolution in ComicVineProvider tagging notes. |
+| 2026-11-19 | L9 resolved (#40): guarded `PerceptualHashService.ComputeDHash` against decompression bombs by inspecting codec dimensions before full bitmap decode. |
