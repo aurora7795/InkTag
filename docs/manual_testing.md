@@ -17,6 +17,36 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #31]: Atomic State Persistence Verification
+* **Branch / Commit:** `fix/issue-31-atomic-file-persistence`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`AtomicFile.cs`, `AppSettings.cs`, `MetadataBackupService.cs`, `ScraperCacheService.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that modifying settings or performing metadata edits writes state via atomic temporary files without leaving leftover `.tmp-*` artifacts, and that corrupted JSON files log warnings instead of silently failing.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Clean Atomic Write):**
+  1. Launch InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Open **Settings**, toggle a setting (e.g. Theme or Debug logging), and click **Save**.
+  3. Inspect `~/.config/InkTag/` (or OS config directory):
+     - Confirm `settings.json` is updated with valid JSON.
+     - Confirm no leftover `.tmp-*` files exist in the directory.
+- [ ] **Step 2 (Verify Corrupt JSON Warning):**
+  1. Open terminal and write corrupt content to `settings.json`:
+     ```bash
+     echo "NOT_JSON_DATA" > ~/.config/InkTag/settings.json
+     ```
+  2. Launch InkTag GUI or CLI.
+  3. Inspect logs (`~/.local/share/InkTag/logs/InkTag.log`):
+     - Confirm a warning line is present: `[WARN] Failed to read settings from '...'`.
+     - Confirm application initializes default settings cleanly without crashing.
+
+* **Expected Result:** Settings and manifests save atomically without temp remnants, and corrupt configurations trigger explicit diagnostic warnings.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #30]: Page-Strip Provenance & Non-Clobbering Backup Verification
 * **Branch / Commit:** `fix/issue-30-page-strip-backup-provenance`
 * **Date Added:** 2026-11-19

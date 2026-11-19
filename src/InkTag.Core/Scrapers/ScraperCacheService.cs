@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using InkTag.Core.IO;
+using InkTag.Core.Logging;
 
 namespace InkTag.Core.Scrapers;
 
@@ -114,12 +116,12 @@ public class ScraperCacheService : IDisposable
                         MaxPersistedEntries));
 
                 string json = JsonSerializer.Serialize(entriesToSave);
-                File.WriteAllText(_cacheFilePath, json);
+                AtomicFile.WriteAllText(_cacheFilePath, json);
                 _isDirty = false;
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore cache write errors
+                AppLogger.LogWarning($"[ScraperCacheService] Failed to flush cache to '{_cacheFilePath}': {ex.Message}");
             }
         }
     }
@@ -143,9 +145,9 @@ public class ScraperCacheService : IDisposable
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback to empty cache on error
+                AppLogger.LogWarning($"[ScraperCacheService] Failed to load cache from '{_cacheFilePath}': {ex.Message}");
             }
         }
     }

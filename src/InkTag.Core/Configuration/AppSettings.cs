@@ -163,7 +163,7 @@ public class AppSettingsService
             }
 
             string json = JsonSerializer.Serialize(Settings, JsonOptions);
-            File.WriteAllText(_settingsFilePath, json);
+            IO.AtomicFile.WriteAllText(_settingsFilePath, json);
 
             // Restrict file access to current user only on Unix systems (POSIX 0600 file, 0700 dir)
             if (!OperatingSystem.IsWindows())

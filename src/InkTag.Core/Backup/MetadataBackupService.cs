@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using InkTag.Core.IO;
 using InkTag.Core.Logging;
 
 namespace InkTag.Core.Backup;
@@ -361,8 +362,9 @@ public class MetadataBackupService
             string json = File.ReadAllText(ManifestPath, Encoding.UTF8);
             return JsonSerializer.Deserialize<List<MetadataBackupEntry>>(json) ?? new List<MetadataBackupEntry>();
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.LogWarning($"[MetadataBackupService] Failed to load manifest from '{ManifestPath}': {ex.Message}");
             return new List<MetadataBackupEntry>();
         }
     }
@@ -372,7 +374,7 @@ public class MetadataBackupService
         try
         {
             string json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(ManifestPath, json, Encoding.UTF8);
+            AtomicFile.WriteAllText(ManifestPath, json, Encoding.UTF8);
         }
         catch (Exception ex)
         {

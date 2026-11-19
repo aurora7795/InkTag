@@ -198,25 +198,25 @@ default `fill-missing` behaviour is unchanged.
 **Branch:** `fix/persistence-durability` — M8 + M6 + M7 (wording).
 
 ### P5-A · M8 — Atomic writes
-- [ ] New `src/InkTag.Core/IO/AtomicFile.cs`: `WriteAllText(path, content)` writes
-      `path + ".tmp-" + Guid` then `File.Move(tmp, path, overwrite: true)`.
-- [ ] Apply in `MetadataBackupService.SaveManifestInternal`, `AppSettingsService.SaveSettings`,
-      `ScraperCacheService.Flush`.
-- [ ] Change the silent catch-all load paths (`LoadManifestInternal`, `LoadSettings`, `LoadCache`)
-      to `AppLogger.LogWarning` before returning the empty fallback.
-- [ ] Tests: `AtomicFile` round-trip; a deliberately corrupt manifest logs a warning and does not
-      silently discard history without a trace.
+- [x] New `src/InkTag.Core/IO/AtomicFile.cs`: `WriteAllText(path, content)` writes
+      `path + ".tmp-" + Guid` then `File.Move(tmp, path, overwrite: true)`. (Fixed in #31).
+- [x] Apply in `MetadataBackupService.SaveManifestInternal`, `AppSettingsService.SaveSettings`,
+      `ScraperCacheService.Flush`. (Fixed in #31).
+- [x] Change the silent catch-all load paths (`LoadManifestInternal`, `LoadSettings`, `LoadCache`)
+      to `AppLogger.LogWarning` before returning the empty fallback. (Fixed in #31).
+- [x] Tests: `AtomicFile` round-trip; a deliberately corrupt manifest logs a warning and does not
+      silently discard history without a trace. (Fixed in #31).
 
 ### P5-B · M6 — Lock down secrets file
-- [ ] After writing `settings.json`, on non-Windows: `File.SetUnixFileMode(path, UserRead |
-      UserWrite)` and the config dir to `UserRead | UserWrite | UserExecute`.
-- [ ] Test guarded to `!OperatingSystem.IsWindows()`.
+- [x] After writing `settings.json`, on non-Windows: `File.SetUnixFileMode(path, UserRead |
+      UserWrite)` and the config dir to `UserRead | UserWrite | UserExecute`. (Fixed in #32).
+- [x] Test guarded to `!OperatingSystem.IsWindows()`. (Fixed in #32).
 
 ### P5-C · M7 — Honest rollback wording
-- [ ] Reword the `RestoreBatchJob` XML doc and the MCP `[Description]`: drop "atomically", state
+- [x] Reword the `RestoreBatchJob` XML doc and the MCP `[Description]`: drop "atomically", state
       "restores each affected archive, continuing past individual failures; see the returned
       failure list".
-- [ ] Open a GitHub issue for true staged-swap atomicity (see Deferred).
+- [x] Open a GitHub issue for true staged-swap atomicity (see Deferred #21).
 
 ---
 
@@ -339,3 +339,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | M1 resolved (#34): corrected `LruImageCache` XML docstrings to accurately document reference-dropping bounded cache architecture and evaluated unmanaged GC reclamation. |
 | 2026-11-19 | L4 resolved (#36): extracted franchise-specific series title expansions into `SeriesAliasResolver`. |
 | 2026-11-19 | L3 resolved (#30): captured pre-mutation metadata backup provenance and non-clobbering GUID swap backups during page stripping. |
+| 2026-11-19 | M8 resolved (#31): introduced `AtomicFile` atomic write-replace pattern across settings, manifests, and cache, with corrupt file diagnostic warnings. |
