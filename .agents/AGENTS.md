@@ -5,13 +5,49 @@
 - **Exceptions**: Only remain on the current branch if the work is explicitly a continuation or follow-up related to the current non-main branch.
 
 ## Task & Issue Tracking Rules
-- Use the GitHub CLI (`gh`) for tracking deferred work and major changes.
-- When we encounter a bug or feature that we decide NOT to fix immediately, automatically create a GitHub Issue:
-  `gh issue create --title "<Brief Title>" --body "<Detailed description + affected files>"`
-- When implementing a feature based on an existing GitHub issue:
-  1. Fetch the issue context: `gh issue view <issue-number>`
-  2. Reference the issue in commit messages: `Fixes #<issue-number>: <description>`
-- Keep issues concise, actionable, and tagged appropriately.
+GitHub Issues serve as the single source of truth and central backlog for all pending, deferred, and ongoing work across the repository.
+
+### 1. Mandatory Issue Capture for Deferred Work
+- **Zero Forgotten Work**: Never leave deferred work, newly discovered bugs, architectural flaws, technical debt, or out-of-scope feature ideas as ephemeral conversation comments or hidden in-code `TODO`s.
+- **Immediate Filing**: Whenever an issue, bug, refactoring need, or feature cannot or should not be addressed within the immediate task scope, proactively create a GitHub Issue:
+  ```bash
+  gh issue create --title "<type>(<scope>): <clear title>" \
+    --label "<labels>" \
+    --body "<structured description>"
+  ```
+- **Issue Types & Title Prefixes**:
+  - `fix(<scope>): ...` — Bugs, unintended behaviors, or regressions.
+  - `feat(<scope>): ...` — New functionality, CLI flags, or GUI controls.
+  - `perf(<scope>): ...` — Memory leaks, socket reuse, disk thrashing, or algorithmic improvements.
+  - `refactor(<scope>): ...` — Code cleanliness, modularity, or deprecation cleanup.
+  - `tech-debt(<scope>): ...` — Architectural shortcuts, missing error handling, test coverage gaps.
+  - `docs(<scope>): ...` — Wiki, architecture diagrams, or developer guides.
+
+### 2. Standard Issue Structure
+When creating issues via `gh issue create`, provide a clear, actionable body:
+- **Problem / Context**: What is the current behavior, deficiency, or missed requirement?
+- **Proposed Solution / Direction**: Suggested implementation path, architectural guidance, or alternatives.
+- **Affected Files / Modules**: Specific file paths, classes, or CLI/MCP/GUI components involved.
+- **Acceptance Criteria**: Concrete checklist of what done looks like.
+- **Origin / References**: Reference related issues, commits, review findings, or conversations.
+
+### 3. Triage & Labeling Standards
+Apply appropriate labels when creating or triaging issues:
+- `bug` — Broken functionality or crash.
+- `enhancement` — New feature or capability.
+- `deferred` — Deliberately captured for future implementation.
+- `tech-debt` — Technical debt, refactoring, or architectural hygiene.
+- `documentation` — Wiki, docs, or README updates.
+
+### 4. Issue-Driven Development Workflow
+- **Backlog First**: Before planning or starting significant work, review active issues (`gh issue list`) to avoid duplicate work and leverage existing context.
+- **Active Issue Context**: When starting work on an issue:
+  1. Inspect the issue: `gh issue view <issue-number>`
+  2. Create a dedicated branch linked to the issue (e.g., `fix/issue-20-backup-manifest`).
+- **Commit & PR Resolution**:
+  - Reference the issue in commit messages: `Fixes #<issue-number>: <description>` or `Closes #<issue-number>: <description>`.
+  - When cutting releases or logging changes in `CHANGELOG.md`, reference the issue number.
+  - Ensure the issue is closed upon merging or resolving.
 
 ## Changelog Maintenance Rules
 - Maintaining [CHANGELOG.md](../CHANGELOG.md) is a **MANDATORY requirement**.

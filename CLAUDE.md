@@ -23,13 +23,37 @@ This file sets the build, test, and style guidelines for the InkTag repository, 
 * **Default to Feature/Fix Branches**: NEVER write code or make modifications directly on `main`. Always check out or create a dedicated feature or bugfix branch (e.g., `feat/feature-name` or `fix/bug-description`) before modifying files, unless the request is explicitly part of an active work session on the current branch.
 
 ### 1.4 Task & Issue Tracking Rules
-* **Use the GitHub CLI (`gh`)** for tracking deferred work and major changes.
-* **When encountering a bug or feature decided NOT to fix immediately**: Automatically create a GitHub Issue:
-  `gh issue create --title "<Brief Title>" --body "<Detailed description + affected files>"`
-* **When implementing a feature based on an existing GitHub issue**:
-  1. Fetch the issue context: `gh issue view <issue-number>`
-  2. Reference the issue in commit messages: `Fixes #<issue-number>: <description>`
-* Keep issues concise, actionable, and tagged appropriately.
+GitHub Issues serve as the single source of truth and central backlog for all pending, deferred, and ongoing work across the repository.
+
+1. **Mandatory Issue Capture for Deferred Work**:
+   * Never leave deferred work, discovered bugs, architectural flaws, technical debt, or follow-up ideas in ephemeral chat messages or hidden in-code `TODO`s.
+   * Whenever an issue, bug, refactoring need, or feature cannot or should not be addressed immediately within the current task scope, proactively create a GitHub Issue:
+     ```bash
+     gh issue create --title "<type>(<scope>): <clear title>" \
+       --label "<labels>" \
+       --body "<structured description>"
+     ```
+   * Title Prefixes: `fix(...)`, `feat(...)`, `perf(...)`, `refactor(...)`, `tech-debt(...)`, `docs(...)`.
+
+2. **Standard Issue Structure**:
+   * **Problem / Context**: Current behavior, deficiency, or missed requirement.
+   * **Proposed Solution / Direction**: Suggested implementation path, architectural guidance, or alternatives.
+   * **Affected Files / Modules**: Specific file paths, classes, or CLI/MCP/GUI components.
+   * **Acceptance Criteria**: Concrete checklist of what done looks like.
+   * **Origin / References**: Reference related issues, commits, review findings, or conversation context.
+
+3. **Triage & Labeling**:
+   * Apply appropriate labels: `bug`, `enhancement`, `deferred`, `tech-debt`, `documentation`.
+
+4. **Issue-Driven Development Workflow**:
+   * **Backlog First**: Before planning or starting significant work, check active issues (`gh issue list`) to avoid duplicate work and leverage existing context.
+   * **Active Issue Context**: When starting work on an issue:
+     1. Inspect the issue: `gh issue view <issue-number>`
+     2. Create a dedicated branch linked to the issue (e.g., `fix/issue-20-backup-manifest`).
+   * **Resolution**:
+     * Reference the issue in commit messages: `Fixes #<issue-number>: <description>` or `Closes #<issue-number>: <description>`.
+     * Note the issue number in `CHANGELOG.md` entries where applicable.
+     * Ensure the issue is closed upon merging or resolving.
 
 ---
 

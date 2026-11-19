@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **GitHub Issue Capture & Tracking Protocols**: Updated repository guidelines (`.agents/AGENTS.md`, `CLAUDE.md`, `.agents/skills/planner.md`, `.agents/skills/audit.md`, `.agents/workflows/build_cycle.md`) establishing GitHub Issues as the canonical backlog for all pending work, technical debt, and deferred items.
+- **GitHub Issue Templates**: Added structured issue templates under `.github/ISSUE_TEMPLATE/` (`bug_report.md`, `feature_request.md`, `deferred_work.md`) and established repository labels for `deferred` and `tech-debt`.
+
+
 ---
 
 ## [0.14.1] - 2026-10-11
