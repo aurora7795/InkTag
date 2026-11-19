@@ -64,6 +64,13 @@ public class BulkScrapeOptions
     public bool AutoFetchFullMetadataOnMatch { get; set; } = true;
     public bool EnableIntroPageFallback { get; set; } = true;
     public bool StripDetectedIntroPages { get; set; } = false;
+
+    /// <summary>
+    /// If true, releases raw extracted cover byte arrays (LocalCoverBytes and TrueCoverBytes)
+    /// after perceptual hash computation and candidate evaluation to reduce heap memory pressure.
+    /// Default is true.
+    /// </summary>
+    public bool DiscardCoverBytesAfterHash { get; set; } = true;
 }
 
 public class BulkScrapeProgressReport
@@ -427,6 +434,12 @@ public class BulkScrapeQueueService
 
                 Interlocked.Increment(ref processedCount);
                 ReportProgress(progress, queue, processedCount, item, item.StatusMessage);
+
+                if (options.DiscardCoverBytesAfterHash)
+                {
+                    item.LocalCoverBytes = null;
+                    item.TrueCoverBytes = null;
+                }
             }
         }, ct);
 
@@ -635,6 +648,12 @@ public class BulkScrapeQueueService
             }
 
             ReportProgress(progress, queueList, i + 1, item, item.StatusMessage);
+
+            if (options.DiscardCoverBytesAfterHash)
+            {
+                item.LocalCoverBytes = null;
+                item.TrueCoverBytes = null;
+            }
         }
 
         return matchedCount;

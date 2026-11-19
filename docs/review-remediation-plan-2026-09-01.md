@@ -255,12 +255,12 @@ The finding is really two smaller things:
       part of the same v0.13.0 revert.
 
 ### P6-B · M5 — Release cover bytes
-- [ ] After `item.LocalCoverHash` is computed in the producer (and after any intro-page fallback
-      that needs the bytes), set `item.LocalCoverBytes = null`.
-- [ ] Check `BulkScrapeItemViewModel` — if the queue window renders a thumbnail from those bytes,
-      keep only a downscaled copy, or retain bytes for on-screen rows only.
-- [ ] Add a `BulkScrapeOptions.DiscardCoverBytesAfterHash` flag (default `true` for CLI/MCP, which
-      have no UI).
+- [x] After `item.LocalCoverHash` is computed in the producer (and after any intro-page fallback
+      that needs the bytes), set `item.LocalCoverBytes = null`. (Fixed in #33).
+- [x] Check `BulkScrapeItemViewModel` — if the queue window renders a thumbnail from those bytes,
+      keep only a downscaled copy, or retain bytes for on-screen rows only. (Fixed in #33: ViewModel decodes thumbnail and visual match indicators use `LocalCoverHash`).
+- [x] Add a `BulkScrapeOptions.DiscardCoverBytesAfterHash` flag (default `true` for CLI/MCP, which
+      have no UI). (Fixed in #33).
 
 ---
 
@@ -274,9 +274,9 @@ The finding is really two smaller things:
       `SeriesAliasResolver` backed by a small data table. Fixed in #36.
 - [x] **L6** `KomgaClient.CleanServerUrl` — `AppLogger.LogWarning` when it injects `http://` for a
       schemeless URL. Fixed in #37.
-- [ ] **L7** `ComicFileRenamer.SanitizeFilename` — reject/rewrite Windows reserved device names
+- [x] **L7** `ComicFileRenamer.SanitizeFilename` — reject/rewrite Windows reserved device names
       (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) and trim trailing dots/spaces;
-      add `RenamingTests` cases.
+      add `RenamingTests` cases. (Fixed in #35).
 - [ ] **L9** `PerceptualHashService.ComputeDHash` — `Image.Identify` first and reject images over
       ~40 MP before `Image.Load<L8>`.
 
@@ -341,3 +341,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L3 resolved (#30): captured pre-mutation metadata backup provenance and non-clobbering GUID swap backups during page stripping. |
 | 2026-11-19 | M8 resolved (#31): introduced `AtomicFile` atomic write-replace pattern across settings, manifests, and cache, with corrupt file diagnostic warnings. |
 | 2026-11-19 | L2 resolved (#19): held persistent open `StreamWriter` with in-memory size tracking in `AppLogger` to eliminate per-line stat and open I/O lock contention. |
+| 2026-11-19 | M5 resolved (#33): added `BulkScrapeOptions.DiscardCoverBytesAfterHash` and updated visual match ViewModel binding to release raw cover byte buffers post-hash computation. |

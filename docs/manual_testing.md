@@ -17,6 +17,29 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #33]: Bulk Scrape Memory Optimization & Cover Discard Verification
+* **Branch / Commit:** `perf/issue-33-bulk-scrape-release-cover-bytes`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`BulkScrapeQueueService.cs`), `InkTag.Gui` (`BulkScrapeItemViewModel.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that running a bulk scrape releases heavy in-memory cover byte buffers while retaining visual similarity tooltips and thumbnail displays in the GUI.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Bulk Scrape GUI Run):**
+  1. Launch InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Load a folder containing multiple comic archives (.cbz).
+  3. Start a Bulk Scrape operation.
+  4. Observe the queue items during and after scraping:
+     - Verify thumbnail images still render properly for scraped items.
+     - Hover over visual match badges (percentage pills) and confirm tooltip text displays expected visual match percentage (not "No Local Cover").
+     - Confirm memory usage remains stable and does not climb uncontrollably when queueing 50+ items.
+
+* **Expected Result:** Cover byte buffers are discarded post-hashing to conserve memory, while UI thumbnails and visual match indicators display correctly.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #31]: Atomic State Persistence Verification
 * **Branch / Commit:** `fix/issue-31-atomic-file-persistence`
 * **Date Added:** 2026-11-19

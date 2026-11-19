@@ -321,7 +321,7 @@ public class BulkScrapeItemViewModel : ObservableObject
         get
         {
             if (HasVisualScore) return FormatPercent(MatchedCandidate!.VisualSimilarity!.Value);
-            if (Item.LocalCoverBytes == null || Item.LocalCoverBytes.Length == 0 || Item.LocalCoverHash == 0) return "No Local Cover";
+            if (Item.LocalCoverHash == 0 && (Item.LocalCoverBytes == null || Item.LocalCoverBytes.Length == 0)) return "No Local Cover";
             if (MatchedCandidate != null && string.IsNullOrEmpty(MatchedCandidate.SmallCoverUrl) && string.IsNullOrEmpty(MatchedCandidate.CoverUrl)) return "No Remote Cover";
             if (MatchedCandidate != null) return "Text Only";
             return "—";
@@ -336,7 +336,7 @@ public class BulkScrapeItemViewModel : ObservableObject
             {
                 return $"Cover perceptual dHash visual match: {FormatPercent(MatchedCandidate!.VisualSimilarity!.Value)}";
             }
-            if (Item.LocalCoverBytes == null || Item.LocalCoverBytes.Length == 0 || Item.LocalCoverHash == 0)
+            if (Item.LocalCoverHash == 0 && (Item.LocalCoverBytes == null || Item.LocalCoverBytes.Length == 0))
             {
                 return "Local comic archive does not contain a readable cover image or extraction failed.";
             }

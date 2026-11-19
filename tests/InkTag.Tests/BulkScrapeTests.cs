@@ -66,12 +66,21 @@ public class BulkScrapeTests
 
         try
         {
-            // Create a small valid test JPEG image
+            // Create a small valid test JPEG image with non-uniform pixels so dHash is non-zero
             using (var bitmap = new SKBitmap(64, 96))
-            using (var image = SKImage.FromBitmap(bitmap))
-            using (var data = image.Encode(SKEncodedImageFormat.Jpeg, 90))
             {
-                File.WriteAllBytes(imgPath, data.ToArray());
+                using (var canvas = new SKCanvas(bitmap))
+                {
+                    canvas.Clear(SKColors.White);
+                    using var paint = new SKPaint { Color = SKColors.Black };
+                    canvas.DrawRect(32, 0, 32, 96, paint);
+                }
+
+                using (var image = SKImage.FromBitmap(bitmap))
+                using (var data = image.Encode(SKEncodedImageFormat.Jpeg, 90))
+                {
+                    File.WriteAllBytes(imgPath, data.ToArray());
+                }
             }
 
             using (var fs = File.OpenWrite(cbzPath))
@@ -462,5 +471,50 @@ public class BulkScrapeTests
         Assert.Contains("CBZ", cbrVm.FormatConversionTooltip);
 
         Assert.False(cbzVm.IsCbr);
+    }
+
+    [Fact]
+    public async Task ProcessQueueAsync_DiscardsCoverBytesAfterHash_WhenConfigured()
+    {
+        string cbz1 = CreateTestCbzWithCover("Spawn #01.cbz");
+        string cbz2 = CreateTestCbzWithCover("Spawn #02.cbz");
+
+        try
+        {
+            var mockProvider = new MockScraperProvider();
+            var settingsService = new AppSettingsService();
+            settingsService.Settings.ComicVineApiKey = "mock_key";
+            var scraperService = new MetadataScraperService(settingsService, mockProvider);
+            var queueService = new BulkScrapeQueueService(scraperService, null, settingsService);
+
+            // 1. Process with DiscardCoverBytesAfterHash = true (default)
+            var queue1 = queueService.CreateQueue(new[] { cbz1 });
+            var optionsDiscard = new BulkScrapeOptions
+            {
+                DiscardCoverBytesAfterHash = true
+            };
+            await queueService.ProcessQueueAsync(queue1, optionsDiscard);
+
+            Assert.NotEqual(0UL, queue1[0].LocalCoverHash);
+            Assert.Null(queue1[0].LocalCoverBytes);
+            Assert.Null(queue1[0].TrueCoverBytes);
+
+            // 2. Process with DiscardCoverBytesAfterHash = false
+            var queue2 = queueService.CreateQueue(new[] { cbz2 });
+            var optionsRetain = new BulkScrapeOptions
+            {
+                DiscardCoverBytesAfterHash = false
+            };
+            await queueService.ProcessQueueAsync(queue2, optionsRetain);
+
+            Assert.NotEqual(0UL, queue2[0].LocalCoverHash);
+            Assert.NotNull(queue2[0].LocalCoverBytes);
+            Assert.NotEmpty(queue2[0].LocalCoverBytes!);
+        }
+        finally
+        {
+            if (File.Exists(cbz1)) File.Delete(cbz1);
+            if (File.Exists(cbz2)) File.Delete(cbz2);
+        }
     }
 }
