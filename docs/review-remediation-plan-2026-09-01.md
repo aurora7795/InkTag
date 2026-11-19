@@ -270,8 +270,8 @@ The finding is really two smaller things:
 
 - [ ] **L5** `ComicVineProvider.cs:600` — resolve the version from the assembly unconditionally;
       remove the `"0.12.0"` literal (consider a shared `InkTagVersion` constant).
-- [ ] **L4** `MetadataScraperService.cs:54` — move the "Buffy" title rules into a
-      `SeriesAliasResolver` backed by a small data table.
+- [x] **L4** `MetadataScraperService.cs:54` — move the "Buffy" title rules into a
+      `SeriesAliasResolver` backed by a small data table. Fixed in #36.
 - [x] **L6** `KomgaClient.CleanServerUrl` — `AppLogger.LogWarning` when it injects `http://` for a
       schemeless URL. Fixed in #37.
 - [ ] **L7** `ComicFileRenamer.SanitizeFilename` — reject/rewrite Windows reserved device names
@@ -337,3 +337,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | Formalized GitHub issue capture protocol and populated issues #29 through #38 from uncompleted phases (M2, L3, M8, M6, M5, M1, L7, L4, L6, GUI layout explorations). |
 | 2026-11-19 | L6 resolved (#37): emitted warning on unencrypted HTTP Komga server URLs before transmitting credentials. |
 | 2026-11-19 | M1 resolved (#34): corrected `LruImageCache` XML docstrings to accurately document reference-dropping bounded cache architecture and evaluated unmanaged GC reclamation. |
+| 2026-11-19 | L4 resolved (#36): extracted franchise-specific series title expansions into `SeriesAliasResolver`. |

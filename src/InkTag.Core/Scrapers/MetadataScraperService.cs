@@ -69,21 +69,7 @@ public class MetadataScraperService : IDisposable
         {
             try
             {
-                var searchTitles = new List<string> { query.Series };
-                if (query.Series.StartsWith("Buffy:", StringComparison.OrdinalIgnoreCase))
-                {
-                    searchTitles.Add("Buffy the Vampire Slayer: " + query.Series.Substring(6).Trim());
-                    searchTitles.Add(query.Series.Substring(6).Trim());
-                }
-                else if (query.Series.StartsWith("Buffy, Season", StringComparison.OrdinalIgnoreCase))
-                {
-                    searchTitles.Add(query.Series.Replace("Buffy, Season", "Buffy the Vampire Slayer Season", StringComparison.OrdinalIgnoreCase));
-                }
-                else if (query.Series.Contains(':'))
-                {
-                    var arcPart = query.Series.Split(':')[1].Trim();
-                    if (!string.IsNullOrWhiteSpace(arcPart)) searchTitles.Add(arcPart);
-                }
+                var searchTitles = SeriesAliasResolver.ResolveSearchTitles(query.Series);
 
                 var volumes = new List<SeriesSearchResult>();
                 foreach (var title in searchTitles)

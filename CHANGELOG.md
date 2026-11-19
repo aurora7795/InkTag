@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Backlog Population (#29–#38)**: Audited existing review reports (`docs/review-remediation-plan-2026-09-01.md`) and design explorations (`docs/design/README.md`) to file 10 comprehensive GitHub Issues covering archive repack integrity (#29), page-strip provenance (#30), atomic persistence (#31), secrets permissions (#32), bulk scrape memory (#33), image cache reclamation (#34), Windows filename sanitization (#35), scraper series alias extraction (#36), Komga HTTP warning (#37), and GUI health dashboard / navigation rail (#38).
 
 ### Changed
+- **Series Alias Resolver**: Extracted franchise-specific title expansion rules (e.g. Buffy series and season patterns) out of `MetadataScraperService` into a dedicated `SeriesAliasResolver` class with test coverage for title permutations and subtitle expansions. Resolves [#36](https://github.com/aurora7795/InkTag/issues/36).
 - **Image Cache Documentation**: Updated `LruImageCache` class and method XML documentation to accurately reflect its reference-dropping bounded cache design and explain why explicit bitmap disposal was removed in v0.13.0 to prevent layout pass native crashes. Resolves [#34](https://github.com/aurora7795/InkTag/issues/34).
 
 ### Security
