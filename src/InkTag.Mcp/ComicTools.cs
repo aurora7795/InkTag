@@ -745,7 +745,7 @@ public static class ComicTools
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool, Description("Rolls back an entire multi-file batch job atomically, restoring all affected comic archives to their pre-batch state.")]
+    [McpServerTool, Description("Rolls back an entire multi-file batch job atomically using staged swaps and a recovery journal, restoring all affected comic archives to their pre-batch state with an automatic redo point.")]
     public static string RestoreBatchJob(
         [Description("Unique Batch Job ID to rollback (e.g. 'batch_20260822_123456_a4f910')")] string batchJobId)
     {
@@ -758,6 +758,7 @@ public static class ComicTools
         {
             success = report.Failed == 0,
             batchJobId = report.BatchJobId,
+            redoBatchJobId = report.RedoBatchJobId,
             totalFiles = report.Total,
             restoredCount = report.Restored,
             failedCount = report.Failed,

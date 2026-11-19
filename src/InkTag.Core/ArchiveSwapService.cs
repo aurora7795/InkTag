@@ -286,24 +286,23 @@ internal static class ArchiveSwapService
     }
 
     /// <summary>
-    /// Replaces the embedded ComicInfo.xml in a comic archive with the provided XML string content.
+    /// Stages updated ComicInfo.xml metadata into a temporary CBZ archive at stagedCbzPath without modifying the source archive.
+    /// Preserves existing archive entries and nested directory structures.
     /// </summary>
-    public static void UpdateMetadataXml(string filePath, string xmlContent, bool createBackup = true, CancellationToken cancellationToken = default)
+    public static void StageMetadataXml(string filePath, string xmlContent, string stagedCbzPath, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentNullException.ThrowIfNull(xmlContent);
+        ArgumentNullException.ThrowIfNull(stagedCbzPath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Archive not found: '{filePath}'", filePath);
+        }
 
-        string? tempCbzPath = null;
-        string? backupOriginalPath = null;
-        string? backupTargetPath = null;
-        string originalExtension = Path.GetExtension(filePath) ?? "";
-        string targetPath = originalExtension.Equals(".cbr", StringComparison.OrdinalIgnoreCase) 
-            ? Path.ChangeExtension(filePath, ".cbz") 
-            : filePath;
+        string tempDir = Path.Combine(Path.GetTempPath(), "InkTagStage_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
 
         try
         {
@@ -330,11 +329,99 @@ internal static class ArchiveSwapService
 
             ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
 
+            string? existingXmlToClean = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
+                .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
+            if (existingXmlToClean != null && !existingXmlToClean.Equals(Path.Combine(tempDir, "ComicInfo.xml"), StringComparison.Ordinal))
+            {
+                try { File.Delete(existingXmlToClean); } catch { }
+            }
+
+            string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
+            File.WriteAllText(xmlPath, xmlContent, Encoding.UTF8);
+
+            string? stagedDir = Path.GetDirectoryName(stagedCbzPath);
+            if (!string.IsNullOrEmpty(stagedDir) && !Directory.Exists(stagedDir))
+            {
+                Directory.CreateDirectory(stagedDir);
+            }
+
+            using (Stream stream = File.OpenWrite(stagedCbzPath))
+            using (var writer = new ZipWriter(stream, new ZipWriterOptions(CompressionType.Deflate)))
+            {
+                foreach (var file in Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string entryName = Path.GetRelativePath(tempDir, file).Replace('\\', '/');
+                    writer.Write(entryName, file);
+                }
+            }
+
+            FileInfo stagedInfo = new FileInfo(stagedCbzPath);
+            if (!stagedInfo.Exists || stagedInfo.Length == 0)
+            {
+                var corruptEx = new InvalidDataException("Generated staged archive is empty or invalid.");
+                throw new ComicArchiveCorruptException(corruptEx.Message, stagedCbzPath, corruptEx);
+            }
+
+            using (Stream stream = File.OpenRead(stagedCbzPath))
+            using (var testArchive = ArchiveFactory.OpenArchive(stream))
+            {
+                if (!testArchive.Entries.Any(e => !e.IsDirectory))
+                {
+                    var corruptEx = new InvalidDataException("Generated staged archive contains no entries.");
+                    throw new ComicArchiveCorruptException(corruptEx.Message, stagedCbzPath, corruptEx);
+                }
+            }
+        }
+        catch
+        {
+            if (File.Exists(stagedCbzPath))
+            {
+                try { File.Delete(stagedCbzPath); } catch { }
+            }
+            throw;
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Replaces the embedded ComicInfo.xml in a comic archive with the provided XML string content.
+    /// Preserves existing archive entries and nested directory structures.
+    /// </summary>
+    public static void UpdateMetadataXml(string filePath, string xmlContent, bool createBackup = true, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+        ArgumentNullException.ThrowIfNull(xmlContent);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string originalExtension = Path.GetExtension(filePath) ?? "";
+        string targetPath = originalExtension.Equals(".cbr", StringComparison.OrdinalIgnoreCase) 
+            ? Path.ChangeExtension(filePath, ".cbz") 
+            : filePath;
+
+        string tempCbzPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cbz.tmp");
+        string? backupOriginalPath = null;
+        string? backupTargetPath = null;
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (createBackup)
             {
-                string? existingXmlFile = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
-                    .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
-                string? originalXml = (existingXmlFile != null && File.Exists(existingXmlFile)) ? File.ReadAllText(existingXmlFile) : null;
+                string? originalXml = null;
+                try
+                {
+                    originalXml = ComicArchiveHandler.GetRawMetadataXml(filePath);
+                }
+                catch { }
+
                 try
                 {
                     var backupService = new InkTag.Core.Backup.MetadataBackupService();
@@ -346,34 +433,7 @@ internal static class ArchiveSwapService
                 }
             }
 
-            string? existingXmlToClean = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
-                .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
-            if (existingXmlToClean != null && !existingXmlToClean.Equals(Path.Combine(tempDir, "ComicInfo.xml"), StringComparison.Ordinal))
-            {
-                try { File.Delete(existingXmlToClean); } catch { }
-            }
-
-            string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
-            File.WriteAllText(xmlPath, xmlContent, Encoding.UTF8);
-
-            tempCbzPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".cbz.tmp");
-            using (Stream stream = File.OpenWrite(tempCbzPath))
-            using (var writer = new ZipWriter(stream, new ZipWriterOptions(CompressionType.Deflate)))
-            {
-                foreach (var file in Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string entryName = Path.GetRelativePath(tempDir, file).Replace('\\', '/');
-                    writer.Write(entryName, file);
-                }
-            }
-
-            FileInfo tempCbzInfo = new FileInfo(tempCbzPath);
-            if (!tempCbzInfo.Exists || tempCbzInfo.Length == 0)
-            {
-                var corruptEx = new InvalidDataException("Generated temporary archive is empty or invalid.");
-                throw new ComicArchiveCorruptException(corruptEx.Message, tempCbzPath, corruptEx);
-            }
+            StageMetadataXml(filePath, xmlContent, tempCbzPath, cancellationToken);
 
             if (File.Exists(targetPath))
             {
@@ -391,12 +451,20 @@ internal static class ArchiveSwapService
             if (backupTargetPath != null && File.Exists(backupTargetPath)) File.Delete(backupTargetPath);
             if (backupOriginalPath != null && File.Exists(backupOriginalPath)) File.Delete(backupOriginalPath);
         }
+        catch (Exception)
+        {
+            if (backupTargetPath != null && File.Exists(backupTargetPath))
+            {
+                try { File.Move(backupTargetPath, targetPath, overwrite: true); } catch { }
+            }
+            if (backupOriginalPath != null && File.Exists(backupOriginalPath))
+            {
+                try { File.Move(backupOriginalPath, filePath, overwrite: true); } catch { }
+            }
+            throw;
+        }
         finally
         {
-            if (Directory.Exists(tempDir))
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
             if (tempCbzPath != null && File.Exists(tempCbzPath))
             {
                 try { File.Delete(tempCbzPath); } catch { }

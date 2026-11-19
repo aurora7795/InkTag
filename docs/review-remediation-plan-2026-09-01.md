@@ -292,31 +292,30 @@ Tracked against `aurora7795/InkTag`:
 - [x] [**#20**](https://github.com/aurora7795/InkTag/issues/20) — **L1 · Manifest write amplification.**
   `MetadataBackupService.CreateBackup` rewrites the whole (capped-1000) manifest per edit; move to
   an append-oriented journal or a batched flush. Pairs with M8 (Phase 5 atomic writes). (Resolved in #20).
-- [**#21**](https://github.com/aurora7795/InkTag/issues/21) — **M7 (full) · True atomic batch
+- [x] [**#21**](https://github.com/aurora7795/InkTag/issues/21) — **M7 (full) · True atomic batch
   rollback.** Stage every XML rewrite to a temp CBZ, then swap them all with a recovery journal so
-  a mid-run crash leaves either the old or the new state, never a mix. (Phase 5 P5-C only fixes the
-  wording.)
-- [**#22**](https://github.com/aurora7795/InkTag/issues/22) — **L8 · CLI arg-parser migration.**
+  a mid-run crash leaves either the old or the new state, never a mix. (Resolved in #21 with staged swaps, pre-flight abort, recovery journal, and redo points).
+- [x] [**#22**](https://github.com/aurora7795/InkTag/issues/22) — **L8 · CLI arg-parser migration.**
   Move `src/InkTag.Cli/Program.cs` to `System.CommandLine`; removes ~800 lines and adds
   `--opt=value` support. Keep the `--json` output contract byte-identical. (Resolved in #22).
 - [x] [**#29**](https://github.com/aurora7795/InkTag/issues/29) — **M2 · Archive repack nested directory integrity.**
   Preserve relative directory hierarchies with `ExtractFullPath = true` and recursive enumeration in `RemoveArchivePages`. (Resolved in #29).
-- [**#30**](https://github.com/aurora7795/InkTag/issues/30) — **L3 · Page-strip provenance & non-clobbering backup naming.**
-  Capture pre-write snapshot and use GUID-suffixed backup filenames during page removal.
-- [**#31**](https://github.com/aurora7795/InkTag/issues/31) — **M8 · Atomic file write-replace pattern.**
-  Implement `AtomicFile` temp-file-and-rename pattern for manifest, settings, and scraper cache, and warn on corrupt reads.
-- [**#32**](https://github.com/aurora7795/InkTag/issues/32) — **M6 · Restrict settings.json permissions on Unix.**
-  Enforce POSIX `0600` permissions on `settings.json` containing plaintext API keys and credentials.
-- [**#33**](https://github.com/aurora7795/InkTag/issues/33) — **M5 · Release raw cover bytes in bulk scrape queue.**
-  Null out `LocalCoverBytes` after computing `LocalCoverHash` to reduce RAM usage on large library operations.
-- [**#34**](https://github.com/aurora7795/InkTag/issues/34) — **M1 · LruImageCache docstring correction & reclamation.**
-  Correct misleading claims of automatic bitmap disposal and evaluate safe unmanaged GPU handle disposal.
-- [**#35**](https://github.com/aurora7795/InkTag/issues/35) — **L7 · Sanitize Windows reserved filenames & trailing dots.**
-  Sanitize Windows device names (`CON`, `PRN`, etc.) and trailing periods in `ComicFileRenamer`.
-- [**#36**](https://github.com/aurora7795/InkTag/issues/36) — **L4 · Decouple series title overrides into SeriesAliasResolver.**
-  Extract hardcoded series alias transformations from `MetadataScraperService` into a dedicated resolver.
-- [**#37**](https://github.com/aurora7795/InkTag/issues/37) — **L6 · Warn on unencrypted HTTP Komga URLs.**
-  Emit an `AppLogger.LogWarning` when defaulting to unencrypted HTTP before transmitting credentials.
+- [x] [**#30**](https://github.com/aurora7795/InkTag/issues/30) — **L3 · Page-strip provenance & non-clobbering backup naming.**
+  Capture pre-write snapshot and use GUID-suffixed backup filenames during page removal. (Resolved in #30).
+- [x] [**#31**](https://github.com/aurora7795/InkTag/issues/31) — **M8 · Atomic file write-replace pattern.**
+  Implement `AtomicFile` temp-file-and-rename pattern for manifest, settings, and scraper cache, and warn on corrupt reads. (Resolved in #31).
+- [x] [**#32**](https://github.com/aurora7795/InkTag/issues/32) — **M6 · Restrict settings.json permissions on Unix.**
+  Enforce POSIX `0600` permissions on `settings.json` containing plaintext API keys and credentials. (Resolved in #32).
+- [x] [**#33**](https://github.com/aurora7795/InkTag/issues/33) — **M5 · Release raw cover bytes in bulk scrape queue.**
+  Null out `LocalCoverBytes` after computing `LocalCoverHash` to reduce RAM usage on large library operations. (Resolved in #33).
+- [x] [**#34**](https://github.com/aurora7795/InkTag/issues/34) — **M1 · LruImageCache docstring correction & reclamation.**
+  Correct misleading claims of automatic bitmap disposal and evaluate safe unmanaged GPU handle disposal. (Resolved in #34).
+- [x] [**#35**](https://github.com/aurora7795/InkTag/issues/35) — **L7 · Sanitize Windows reserved filenames & trailing dots.**
+  Sanitize Windows device names (`CON`, `PRN`, etc.) and trailing periods in `ComicFileRenamer`. (Resolved in #35).
+- [x] [**#36**](https://github.com/aurora7795/InkTag/issues/36) — **L4 · Decouple series title overrides into SeriesAliasResolver.**
+  Extract hardcoded series alias transformations from `MetadataScraperService` into a dedicated resolver. (Resolved in #36).
+- [x] [**#37**](https://github.com/aurora7795/InkTag/issues/37) — **L6 · Warn on unencrypted HTTP Komga URLs.**
+  Emit an `AppLogger.LogWarning` when defaulting to unencrypted HTTP before transmitting credentials. (Resolved in #37).
 - [**#38**](https://github.com/aurora7795/InkTag/issues/38) — **GUI Layout Explorations A & C · Library Rail and Health Dashboard.**
   Introduce persistent smart-list navigation rail and collection health overview dashboard.
 

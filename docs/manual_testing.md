@@ -17,6 +17,35 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #21]: Atomic Batch Rollback & Redo Points Verification
+* **Branch / Commit:** `feat/issue-21-atomic-batch-rollback`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`MetadataBackupService.cs`, `ArchiveSwapService.cs`, `ComicArchiveHandler.cs`), `InkTag.Mcp` (`ComicTools.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that rolling back a multi-file batch job is truly atomic (staged swaps, pre-flight abort on error, zero partial rollbacks), supports automatic redo point creation, and self-heals interrupted operations via the recovery journal.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Batch Rollback & Redo Point via MCP or CLI):**
+  1. Have 2 or 3 test CBZ files tagged in a single batch (e.g. batch ID `batch_manual_test_01`).
+  2. Call `RestoreBatchJob("batch_manual_test_01")` via MCP or test code.
+  3. Verify that all archives are restored to their pre-batch state and `redoBatchJobId` is returned in the response (e.g. `redo_batch_manual_test_01_<guid>`).
+  4. Call `RestoreBatchJob(redoBatchJobId)` using the returned redo ID.
+  5. Verify that all archives are reverted back to their edited state.
+- [ ] **Step 2 (Verify Pre-Flight Abort Leaves Files Untouched):**
+  1. Edit 2 CBZ files under a batch ID `batch_abort_test_02`.
+  2. Intentionally delete or rename one of the files from disk.
+  3. Call `RestoreBatchJob("batch_abort_test_02")`.
+  4. Verify that the operation reports failure (`Failed > 0, Restored == 0`) and the surviving CBZ file remains completely untouched.
+- [ ] **Step 3 (Verify Crash Recovery Journal Cleanup):**
+  1. Check the InkTag backup directory (`~/.local/share/InkTag/backups/`).
+  2. Verify no temporary staging folders (`staging_*`) or `.journal.json` files linger after a normal batch rollback.
+
+* **Expected Result:** Multi-file rollbacks execute all-or-nothing, provide an instant redo option, and cleanly maintain filesystem state without leaving orphan files.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #29]: Nested Directory Preservation & Safe Repackaging Verification
 * **Branch / Commit:** `fix/issue-29-archive-repack-structure`
 * **Date Added:** 2026-11-19

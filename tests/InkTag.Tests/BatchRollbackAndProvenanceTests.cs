@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using InkTag.Core;
 using InkTag.Core.Backup;
+using InkTag.Core.IO;
 using InkTag.Mcp;
 using Xunit;
 
@@ -173,6 +174,7 @@ public class BatchRollbackAndProvenanceTests : IDisposable
             string restoreJson = ComicTools.RestoreBatchJob(batchId);
             Assert.Contains("\"success\": true", restoreJson);
             Assert.Contains("\"restoredCount\": 1", restoreJson);
+            Assert.Contains("\"redoBatchJobId\":", restoreJson);
 
             // Verify restored
             var restored = editor.ReadMetadata(cbz);
@@ -181,6 +183,150 @@ public class BatchRollbackAndProvenanceTests : IDisposable
         finally
         {
             if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
+
+    [Fact]
+    public void RestoreBatchJob_CreatesRedoPoint_AndAllowsReversingRollback()
+    {
+        string cbz1 = CreateTestCbz("Book 1 Original", "Series Alpha");
+        string cbz2 = CreateTestCbz("Book 2 Original", "Series Alpha");
+        try
+        {
+            var editor = new MetadataEditor();
+            string batchId = "batch_redo_test_" + Guid.NewGuid().ToString("N")[..8];
+
+            // Edit both books
+            editor.EditMetadata(cbz1, c => c.Title = "Book 1 Modified", batchJobId: batchId);
+            editor.EditMetadata(cbz2, c => c.Title = "Book 2 Modified", batchJobId: batchId);
+
+            Assert.Equal("Book 1 Modified", editor.ReadMetadata(cbz1).Title);
+            Assert.Equal("Book 2 Modified", editor.ReadMetadata(cbz2).Title);
+
+            var backupService = new MetadataBackupService(_testBackupDir);
+
+            // Rollback the batch
+            var report = backupService.RestoreBatchJob(batchId);
+            Assert.Equal(2, report.Total);
+            Assert.Equal(2, report.Restored);
+            Assert.Equal(0, report.Failed);
+            Assert.NotNull(report.RedoBatchJobId);
+
+            // Verify restored to original
+            Assert.Equal("Book 1 Original", editor.ReadMetadata(cbz1).Title);
+            Assert.Equal("Book 2 Original", editor.ReadMetadata(cbz2).Title);
+
+            // Now apply the redo point to undo the rollback
+            var redoReport = backupService.RestoreBatchJob(report.RedoBatchJobId!);
+            Assert.Equal(2, redoReport.Total);
+            Assert.Equal(2, redoReport.Restored);
+            Assert.Equal(0, redoReport.Failed);
+
+            // Verify modified state is restored
+            Assert.Equal("Book 1 Modified", editor.ReadMetadata(cbz1).Title);
+            Assert.Equal("Book 2 Modified", editor.ReadMetadata(cbz2).Title);
+        }
+        finally
+        {
+            if (File.Exists(cbz1)) File.Delete(cbz1);
+            if (File.Exists(cbz2)) File.Delete(cbz2);
+        }
+    }
+
+    [Fact]
+    public void RestoreBatchJob_PreFlightFailure_AbortsAtomicallyWithoutModifyingAnyArchive()
+    {
+        string cbz1 = CreateTestCbz("Book 1 Original", "Series PreFlight");
+        string cbz2 = CreateTestCbz("Book 2 Original", "Series PreFlight");
+        try
+        {
+            var editor = new MetadataEditor();
+            string batchId = "batch_preflight_fail_" + Guid.NewGuid().ToString("N")[..8];
+
+            editor.EditMetadata(cbz1, c => c.Title = "Book 1 Corrupted", batchJobId: batchId);
+            editor.EditMetadata(cbz2, c => c.Title = "Book 2 Corrupted", batchJobId: batchId);
+
+            // Delete cbz2 from disk to trigger pre-flight failure
+            File.Delete(cbz2);
+
+            var backupService = new MetadataBackupService(_testBackupDir);
+            var report = backupService.RestoreBatchJob(batchId);
+
+            Assert.Equal(2, report.Total);
+            Assert.Equal(0, report.Restored);
+            Assert.Equal(1, report.Failed);
+            Assert.Contains(report.Failures, f => f.Path == cbz2);
+
+            // Verify cbz1 was NOT rolled back - atomic all-or-nothing preserved
+            Assert.Equal("Book 1 Corrupted", editor.ReadMetadata(cbz1).Title);
+        }
+        finally
+        {
+            if (File.Exists(cbz1)) File.Delete(cbz1);
+            if (File.Exists(cbz2)) File.Delete(cbz2);
+        }
+    }
+
+    [Fact]
+    public void RecoverPendingBatchJournals_RecoversInterruptedRollback()
+    {
+        string cbz1 = CreateTestCbz("Book 1 Swapped", "Series Recovery");
+        string bak1 = cbz1 + ".orig.bak." + Guid.NewGuid().ToString("N");
+        string stagingDir = Path.Combine(_testBackupDir, "staging_test123");
+        Directory.CreateDirectory(stagingDir);
+        string stagedCbz = Path.Combine(stagingDir, "item1.cbz.staged");
+        File.WriteAllText(stagedCbz, "dummy staged");
+
+        // Put original content into bak1
+        string tempOriginal = CreateTestCbz("Book 1 Original Saved In Bak", "Series Recovery");
+        File.Copy(tempOriginal, bak1);
+        File.Delete(tempOriginal);
+
+        string journalPath = Path.Combine(_testBackupDir, "batch_rollback_recovery_test123.journal.json");
+        try
+        {
+            var journal = new BatchRollbackJournal(
+                JournalId: "test123",
+                BatchJobId: "batch_interrupted",
+                Timestamp: DateTime.UtcNow.ToString("o"),
+                State: "Swapping",
+                Items: new List<BatchRollbackItemPlan>
+                {
+                    new BatchRollbackItemPlan(
+                        ArchivePath: cbz1,
+                        StagedCbzPath: stagedCbz,
+                        BackupOriginalPath: bak1,
+                        CurrentXml: "<ComicInfo><Title>Book 1 Swapped</Title></ComicInfo>",
+                        RestoredXml: "<ComicInfo><Title>Book 1 Original Saved In Bak</Title></ComicInfo>",
+                        Swapped: true
+                    )
+                }
+            );
+
+            AtomicFile.WriteAllText(journalPath, JsonSerializer.Serialize(journal, new JsonSerializerOptions { WriteIndented = true }));
+
+            // Instantiate service which automatically triggers RecoverPendingBatchJournals
+            var backupService = new MetadataBackupService(_testBackupDir);
+
+            // Verify cbz1 was recovered from bak1
+            var editor = new MetadataEditor();
+            Assert.Equal("Book 1 Original Saved In Bak", editor.ReadMetadata(cbz1).Title);
+
+            // Verify .orig.bak file was deleted
+            Assert.False(File.Exists(bak1));
+
+            // Verify journal file was deleted
+            Assert.False(File.Exists(journalPath));
+
+            // Verify staging directory was deleted
+            Assert.False(Directory.Exists(stagingDir));
+        }
+        finally
+        {
+            if (File.Exists(cbz1)) File.Delete(cbz1);
+            if (File.Exists(bak1)) File.Delete(bak1);
+            if (File.Exists(journalPath)) File.Delete(journalPath);
+            if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
         }
     }
 

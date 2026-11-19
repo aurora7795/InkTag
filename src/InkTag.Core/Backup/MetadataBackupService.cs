@@ -41,7 +41,25 @@ public record BatchRollbackReport(
     int Restored,
     int Failed,
     List<string> RestoredFiles,
-    List<(string Path, string Error)> Failures
+    List<(string Path, string Error)> Failures,
+    string? RedoBatchJobId = null
+);
+
+public record BatchRollbackItemPlan(
+    string ArchivePath,
+    string StagedCbzPath,
+    string BackupOriginalPath,
+    string? CurrentXml,
+    string RestoredXml,
+    bool Swapped
+);
+
+public record BatchRollbackJournal(
+    string BatchJobId,
+    string JournalId,
+    string Timestamp,
+    string State,
+    List<BatchRollbackItemPlan> Items
 );
 
 /// <summary>
@@ -84,6 +102,10 @@ public class MetadataBackupService
             if (!Directory.Exists(BackupDirectory))
             {
                 Directory.CreateDirectory(BackupDirectory);
+            }
+            else
+            {
+                RecoverPendingBatchJournals();
             }
         }
         catch (Exception ex)
@@ -312,7 +334,9 @@ public class MetadataBackupService
     }
 
     /// <summary>
-    /// Atomically restores all files belonging to a specific batch job back to their pre-batch snapshots.
+    /// Atomically rolls back all files belonging to a specific batch job back to their pre-batch snapshots.
+    /// Uses staged swaps and a recovery journal to guarantee that either all archives are restored or none are.
+    /// Creates a redo snapshot point so the rollback can itself be reversed.
     /// </summary>
     public BatchRollbackReport RestoreBatchJob(string batchJobId)
     {
@@ -321,27 +345,32 @@ public class MetadataBackupService
             throw new ArgumentException("BatchJobId cannot be null or empty.", nameof(batchJobId));
         }
 
-        List<MetadataBackupEntry> batchEntries;
         lock (Lock)
         {
+            // First recover any orphaned journals from prior interrupted runs
+            RecoverPendingBatchJournals();
+
             var manifest = LoadManifestInternal();
-            batchEntries = manifest
+            var allBatchEntries = manifest
                 .Where(m => string.Equals(m.BatchJobId, batchJobId, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-        }
 
-        if (batchEntries.Count == 0)
-        {
-            throw new InvalidOperationException($"No batch job found with ID '{batchJobId}'.");
-        }
+            if (allBatchEntries.Count == 0)
+            {
+                throw new InvalidOperationException($"No batch job found with ID '{batchJobId}'.");
+            }
 
-        var editor = new MetadataEditor();
-        var restoredFiles = new List<string>();
-        var failures = new List<(string Path, string Error)>();
+            // Group by distinct archive path and select the oldest entry (the true pre-batch state)
+            var targetEntries = allBatchEntries
+                .GroupBy(m => m.ArchivePath, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.Last())
+                .ToList();
 
-        foreach (var entry in batchEntries)
-        {
-            try
+            var failures = new List<(string Path, string Error)>();
+            var targetsToRestore = new List<(MetadataBackupEntry Entry, string RestoredXml, string? CurrentXml)>();
+
+            // Phase 1: Pre-flight validation (read-only)
+            foreach (var entry in targetEntries)
             {
                 if (!File.Exists(entry.ArchivePath))
                 {
@@ -356,26 +385,282 @@ public class MetadataBackupService
                     continue;
                 }
 
-                string restoredXml = File.ReadAllText(backupXmlPath, Encoding.UTF8);
-                editor.UpdateMetadataXml(entry.ArchivePath, restoredXml, createBackup: false);
-                restoredFiles.Add(entry.ArchivePath);
+                string restoredXml;
+                try
+                {
+                    restoredXml = File.ReadAllText(backupXmlPath, Encoding.UTF8);
+                }
+                catch (Exception ex)
+                {
+                    failures.Add((entry.ArchivePath, $"Failed to read backup snapshot XML: {ex.Message}"));
+                    continue;
+                }
+
+                string? currentXml = null;
+                try
+                {
+                    currentXml = ComicArchiveHandler.GetRawMetadataXml(entry.ArchivePath);
+                }
+                catch (Exception ex)
+                {
+                    failures.Add((entry.ArchivePath, $"Failed to inspect current archive metadata: {ex.Message}"));
+                    continue;
+                }
+
+                targetsToRestore.Add((entry, restoredXml, currentXml));
             }
-            catch (Exception ex)
+
+            // If ANY file failed validation, abort atomically! Zero files modified.
+            if (failures.Count > 0)
             {
-                AppLogger.LogWarning($"Failed to restore batch item '{entry.ArchivePath}': {ex.Message}");
-                failures.Add((entry.ArchivePath, ex.Message));
+                AppLogger.LogWarning($"[MetadataBackupService] Atomic batch rollback aborted for '{batchJobId}': {failures.Count} file(s) failed pre-flight validation.");
+                return new BatchRollbackReport(
+                    BatchJobId: batchJobId,
+                    Total: targetEntries.Count,
+                    Restored: 0,
+                    Failed: failures.Count,
+                    RestoredFiles: new List<string>(),
+                    Failures: failures
+                );
+            }
+
+            // Phase 2: Staging pass (build replacement CBZs in isolated staging dir)
+            string stagingId = Guid.NewGuid().ToString("N")[..12];
+            string stagingDir = Path.Combine(BackupDirectory, "staging_" + stagingId);
+            Directory.CreateDirectory(stagingDir);
+
+            var planItems = new List<BatchRollbackItemPlan>();
+
+            try
+            {
+                foreach (var item in targetsToRestore)
+                {
+                    string stagedCbzPath = Path.Combine(stagingDir, $"{item.Entry.Id}.cbz.staged");
+                    try
+                    {
+                        ArchiveSwapService.StageMetadataXml(item.Entry.ArchivePath, item.RestoredXml, stagedCbzPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add((item.Entry.ArchivePath, $"Failed to stage replacement archive: {ex.Message}"));
+                        break;
+                    }
+
+                    string guidSuffix = Guid.NewGuid().ToString("N");
+                    string backupOriginalPath = item.Entry.ArchivePath + ".orig.bak." + guidSuffix;
+
+                    planItems.Add(new BatchRollbackItemPlan(
+                        ArchivePath: item.Entry.ArchivePath,
+                        StagedCbzPath: stagedCbzPath,
+                        BackupOriginalPath: backupOriginalPath,
+                        CurrentXml: item.CurrentXml,
+                        RestoredXml: item.RestoredXml,
+                        Swapped: false
+                    ));
+                }
+
+                if (failures.Count > 0)
+                {
+                    try { Directory.Delete(stagingDir, true); } catch { }
+
+                    AppLogger.LogWarning($"[MetadataBackupService] Atomic batch rollback aborted for '{batchJobId}': staging failed. Zero target files modified.");
+                    return new BatchRollbackReport(
+                        BatchJobId: batchJobId,
+                        Total: targetEntries.Count,
+                        Restored: 0,
+                        Failed: failures.Count,
+                        RestoredFiles: new List<string>(),
+                        Failures: failures
+                    );
+                }
+
+                // Phase 3: Recovery Journal creation
+                string journalPath = Path.Combine(BackupDirectory, $"batch_rollback_{batchJobId}_{stagingId}.journal.json");
+                var journal = new BatchRollbackJournal(
+                    BatchJobId: batchJobId,
+                    JournalId: stagingId,
+                    Timestamp: DateTime.UtcNow.ToString("o"),
+                    State: "Swapping",
+                    Items: planItems
+                );
+
+                string journalJson = JsonSerializer.Serialize(journal, new JsonSerializerOptions { WriteIndented = true });
+                AtomicFile.WriteAllText(journalPath, journalJson, Encoding.UTF8);
+
+                // Phase 4: Atomic two-step swap loop guarded by in-process rollback
+                try
+                {
+                    for (int i = 0; i < planItems.Count; i++)
+                    {
+                        var plan = planItems[i];
+                        File.Move(plan.ArchivePath, plan.BackupOriginalPath);
+                        File.Move(plan.StagedCbzPath, plan.ArchivePath);
+                        planItems[i] = plan with { Swapped = true };
+                    }
+                }
+                catch (Exception swapEx)
+                {
+                    AppLogger.LogError($"[MetadataBackupService] Swap failed during batch rollback for '{batchJobId}': {swapEx.Message}. Executing immediate rollback of swapped files...", swapEx);
+
+                    foreach (var plan in planItems)
+                    {
+                        if (File.Exists(plan.BackupOriginalPath))
+                        {
+                            try
+                            {
+                                if (File.Exists(plan.ArchivePath)) File.Delete(plan.ArchivePath);
+                                File.Move(plan.BackupOriginalPath, plan.ArchivePath);
+                            }
+                            catch (Exception revertEx)
+                            {
+                                AppLogger.LogError($"Failed to revert '{plan.ArchivePath}' from '{plan.BackupOriginalPath}': {revertEx.Message}", revertEx);
+                            }
+                        }
+                    }
+
+                    try { Directory.Delete(stagingDir, true); } catch { }
+                    try { File.Delete(journalPath); } catch { }
+
+                    failures.Add((batchJobId, $"Swap failed and was cleanly reverted: {swapEx.Message}"));
+                    return new BatchRollbackReport(
+                        BatchJobId: batchJobId,
+                        Total: targetEntries.Count,
+                        Restored: 0,
+                        Failed: failures.Count,
+                        RestoredFiles: new List<string>(),
+                        Failures: failures
+                    );
+                }
+
+                // Phase 5: Swaps complete! Create Redo point
+                string redoBatchJobId = $"redo_{batchJobId}_{stagingId}";
+                foreach (var plan in planItems)
+                {
+                    try
+                    {
+                        CreateBackup(
+                            archivePath: plan.ArchivePath,
+                            originalXml: plan.CurrentXml,
+                            operationType: "BatchRollbackRedo",
+                            batchJobId: redoBatchJobId,
+                            changeReason: $"Redo point prior to rolling back batch '{batchJobId}'"
+                        );
+                    }
+                    catch (Exception redoEx)
+                    {
+                        AppLogger.LogWarning($"Failed to record redo snapshot for '{plan.ArchivePath}': {redoEx.Message}");
+                    }
+                }
+
+                // Phase 6: Clean up backup original files, staging directory, and journal
+                foreach (var plan in planItems)
+                {
+                    if (File.Exists(plan.BackupOriginalPath))
+                    {
+                        try { File.Delete(plan.BackupOriginalPath); } catch { }
+                    }
+                }
+
+                try { Directory.Delete(stagingDir, true); } catch { }
+                try { File.Delete(journalPath); } catch { }
+
+                var restoredPaths = planItems.Select(p => p.ArchivePath).ToList();
+                AppLogger.LogInfo($"[MetadataBackupService] Atomic batch rollback completed successfully for '{batchJobId}'. Restored {restoredPaths.Count} file(s). Redo Batch ID: '{redoBatchJobId}'.");
+
+                return new BatchRollbackReport(
+                    BatchJobId: batchJobId,
+                    Total: targetEntries.Count,
+                    Restored: restoredPaths.Count,
+                    Failed: 0,
+                    RestoredFiles: restoredPaths,
+                    Failures: new List<(string, string)>(),
+                    RedoBatchJobId: redoBatchJobId
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(stagingDir))
+                {
+                    try { Directory.Delete(stagingDir, true); } catch { }
+                }
             }
         }
+    }
 
-        AppLogger.LogInfo($"[MetadataBackupService] Batch rollback completed for '{batchJobId}'. Restored: {restoredFiles.Count}, Failed: {failures.Count}");
-        return new BatchRollbackReport(
-            BatchJobId: batchJobId,
-            Total: batchEntries.Count,
-            Restored: restoredFiles.Count,
-            Failed: failures.Count,
-            RestoredFiles: restoredFiles,
-            Failures: failures
-        );
+    /// <summary>
+    /// Scans the backup directory for any pending recovery journals left from an interrupted batch rollback,
+    /// and safely reconciles all files back to their consistent pre-rollback state.
+    /// </summary>
+    public void RecoverPendingBatchJournals()
+    {
+        lock (Lock)
+        {
+            if (!Directory.Exists(BackupDirectory)) return;
+
+            string[] journalFiles;
+            try
+            {
+                journalFiles = Directory.GetFiles(BackupDirectory, "batch_rollback_*.journal.json");
+            }
+            catch
+            {
+                return;
+            }
+
+            foreach (string journalFile in journalFiles)
+            {
+                try
+                {
+                    string json = File.ReadAllText(journalFile, Encoding.UTF8);
+                    var journal = JsonSerializer.Deserialize<BatchRollbackJournal>(json);
+                    if (journal == null || journal.Items == null)
+                    {
+                        File.Delete(journalFile);
+                        continue;
+                    }
+
+                    AppLogger.LogWarning($"[MetadataBackupService] Recovering interrupted batch rollback '{journal.BatchJobId}' from journal '{Path.GetFileName(journalFile)}'...");
+
+                    foreach (var item in journal.Items)
+                    {
+                        if (File.Exists(item.BackupOriginalPath))
+                        {
+                            try
+                            {
+                                if (File.Exists(item.ArchivePath))
+                                {
+                                    File.Delete(item.ArchivePath);
+                                }
+                                File.Move(item.BackupOriginalPath, item.ArchivePath);
+                                AppLogger.LogInfo($"[MetadataBackupService] Restored '{item.ArchivePath}' from '{item.BackupOriginalPath}'.");
+                            }
+                            catch (Exception ex)
+                            {
+                                AppLogger.LogError($"[MetadataBackupService] Recovery failed for '{item.ArchivePath}': {ex.Message}", ex);
+                            }
+                        }
+
+                        if (File.Exists(item.StagedCbzPath))
+                        {
+                            try { File.Delete(item.StagedCbzPath); } catch { }
+                        }
+                    }
+
+                    string stagingDir = Path.Combine(BackupDirectory, "staging_" + journal.JournalId);
+                    if (Directory.Exists(stagingDir))
+                    {
+                        try { Directory.Delete(stagingDir, true); } catch { }
+                    }
+
+                    File.Delete(journalFile);
+                    AppLogger.LogInfo($"[MetadataBackupService] Successfully recovered and cleaned up journal '{Path.GetFileName(journalFile)}'.");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogWarning($"[MetadataBackupService] Failed to process recovery journal '{journalFile}': {ex.Message}");
+                }
+            }
+        }
     }
 
     private void AppendJournalEntry(MetadataBackupEntry entry)

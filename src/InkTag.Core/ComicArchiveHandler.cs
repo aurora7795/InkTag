@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpCompress.Archives;
@@ -246,6 +247,58 @@ internal static class ComicArchiveHandler
     public static Task<ComicInfo> ReadMetadataAsync(string filePath, CancellationToken cancellationToken = default)
     {
         return Task.Run(() => ReadMetadata(filePath, out _, out _, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads and returns the raw string content of ComicInfo.xml from a comic archive without full extraction.
+    /// Returns null if ComicInfo.xml is not present.
+    /// </summary>
+    public static string? GetRawMetadataXml(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return null;
+
+        string ext = Path.GetExtension(filePath) ?? "";
+        if (ext.Equals(".cbz", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = OpenReadOptimized(filePath);
+                using var zipArchive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
+                var entry = zipArchive.Entries.FirstOrDefault(e =>
+                    Path.GetFileName(e.FullName).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    using var entryStream = entry.Open();
+                    using var reader = new StreamReader(entryStream, Encoding.UTF8);
+                    return reader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogDebug($"[ComicArchiveHandler] Fast seek GetRawMetadataXml failed for '{Path.GetFileName(filePath)}': {ex.Message}");
+            }
+        }
+
+        try
+        {
+            using var stream = OpenReadOptimized(filePath);
+            using var archive = ArchiveFactory.OpenArchive(stream, new SharpCompress.Readers.ReaderOptions { LookForHeader = true });
+            var entry = archive.Entries.FirstOrDefault(e =>
+                !e.IsDirectory && e.Key != null &&
+                Path.GetFileName(e.Key).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
+            if (entry != null)
+            {
+                using var entryStream = entry.OpenEntryStream();
+                using var reader = new StreamReader(entryStream, Encoding.UTF8);
+                return reader.ReadToEnd();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.LogDebug($"[ComicArchiveHandler] SharpCompress GetRawMetadataXml failed for '{Path.GetFileName(filePath)}': {ex.Message}");
+        }
+
+        return null;
     }
 
     public static List<string> GetImageEntries(string filePath)
