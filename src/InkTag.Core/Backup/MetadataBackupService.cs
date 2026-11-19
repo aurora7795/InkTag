@@ -51,13 +51,30 @@ public record BatchRollbackReport(
 public class MetadataBackupService
 {
     private static readonly object Lock = new();
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+    private static readonly Dictionary<string, int> UncompactedCounts = new(StringComparer.OrdinalIgnoreCase);
     private static string? _customBackupDir;
+
+    public const int DefaultJournalCompactionThreshold = 50;
+
+    private int _journalCompactionThreshold = DefaultJournalCompactionThreshold;
+
+    /// <summary>
+    /// Number of uncompacted journal records before automatic compaction into backups_manifest.json occurs.
+    /// Defaults to 50.
+    /// </summary>
+    public int JournalCompactionThreshold
+    {
+        get => _journalCompactionThreshold;
+        set => _journalCompactionThreshold = Math.Max(1, value);
+    }
 
     public static string DefaultBackupDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InkTag", "backups");
 
     public string BackupDirectory { get; }
-    private string ManifestPath => Path.Combine(BackupDirectory, "backups_manifest.json");
+    public string ManifestPath => Path.Combine(BackupDirectory, "backups_manifest.json");
+    public string JournalPath => Path.Combine(BackupDirectory, "backups_journal.jsonl");
 
     public MetadataBackupService(string? customBackupDir = null)
     {
@@ -85,6 +102,7 @@ public class MetadataBackupService
 
     /// <summary>
     /// Creates a pre-write backup of ComicInfo.xml before an edit or overwrite, storing rich provenance metadata.
+    /// Appends the entry to an append-oriented journal to avoid O(n) manifest rewrites during batch operations.
     /// </summary>
     public MetadataBackupEntry? CreateBackup(
         string archivePath,
@@ -117,8 +135,8 @@ public class MetadataBackupService
                 string xmlFileName = $"{fileHash}_{id}.xml";
                 string fullXmlPath = Path.Combine(BackupDirectory, xmlFileName);
 
-                // Save XML snapshot (or empty if creating fresh metadata)
-                File.WriteAllText(fullXmlPath, originalXml ?? string.Empty, Encoding.UTF8);
+                // Save XML snapshot (or empty if creating fresh metadata) atomically
+                AtomicFile.WriteAllText(fullXmlPath, originalXml ?? string.Empty, Encoding.UTF8);
 
                 var entry = new MetadataBackupEntry(
                     Id: id,
@@ -137,26 +155,14 @@ public class MetadataBackupService
                     FieldDiffs: fieldDiffs
                 );
 
-                var manifest = LoadManifestInternal();
-                manifest.Insert(0, entry);
+                AppendJournalEntry(entry);
 
-                // Keep manifest at max 1000 items
-                if (manifest.Count > 1000)
+                int uncompacted = IncrementUncompactedCount();
+                if (uncompacted >= JournalCompactionThreshold)
                 {
-                    var excess = manifest.Skip(1000).ToList();
-                    manifest = manifest.Take(1000).ToList();
-
-                    foreach (var old in excess)
-                    {
-                        string oldXml = Path.Combine(BackupDirectory, old.BackupXmlFileName);
-                        if (File.Exists(oldXml))
-                        {
-                            try { File.Delete(oldXml); } catch { /* Ignore */ }
-                        }
-                    }
+                    CompactJournalInternal();
                 }
 
-                SaveManifestInternal(manifest);
                 AppLogger.LogDebug($"[MetadataBackupService] Created backup '{id}' for '{archivePath}' (Batch: {batchJobId ?? "none"}, Op: {operationType})");
                 return entry;
             }
@@ -165,6 +171,25 @@ public class MetadataBackupService
                 AppLogger.LogWarning($"[MetadataBackupService] Failed to create backup for '{archivePath}': {ex.Message}");
                 return null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Forces a compaction of the append journal into backups_manifest.json.
+    /// </summary>
+    public void Flush()
+    {
+        CompactJournal();
+    }
+
+    /// <summary>
+    /// Compacts pending journal records into backups_manifest.json.
+    /// </summary>
+    public void CompactJournal()
+    {
+        lock (Lock)
+        {
+            CompactJournalInternal();
         }
     }
 
@@ -353,7 +378,51 @@ public class MetadataBackupService
         );
     }
 
+    private void AppendJournalEntry(MetadataBackupEntry entry)
+    {
+        string jsonLine = JsonSerializer.Serialize(entry);
+        File.AppendAllText(JournalPath, jsonLine + Environment.NewLine, Utf8NoBom);
+    }
+
+    private int IncrementUncompactedCount()
+    {
+        if (!UncompactedCounts.TryGetValue(BackupDirectory, out int count))
+        {
+            try
+            {
+                count = File.Exists(JournalPath)
+                    ? File.ReadLines(JournalPath).Count(l => !string.IsNullOrWhiteSpace(l))
+                    : 1;
+            }
+            catch
+            {
+                count = 1;
+            }
+            UncompactedCounts[BackupDirectory] = count;
+            return count;
+        }
+
+        count++;
+        UncompactedCounts[BackupDirectory] = count;
+        return count;
+    }
+
+    private void ResetUncompactedCount()
+    {
+        UncompactedCounts[BackupDirectory] = 0;
+    }
+
     private List<MetadataBackupEntry> LoadManifestInternal()
+    {
+        if (File.Exists(JournalPath))
+        {
+            return CompactJournalInternal();
+        }
+
+        return LoadManifestFileOnly();
+    }
+
+    private List<MetadataBackupEntry> LoadManifestFileOnly()
     {
         if (!File.Exists(ManifestPath)) return new List<MetadataBackupEntry>();
 
@@ -369,16 +438,119 @@ public class MetadataBackupService
         }
     }
 
-    private void SaveManifestInternal(List<MetadataBackupEntry> manifest)
+    private List<MetadataBackupEntry> LoadJournalEntriesOnly()
+    {
+        var entries = new List<MetadataBackupEntry>();
+        if (!File.Exists(JournalPath)) return entries;
+
+        try
+        {
+            foreach (string line in File.ReadLines(JournalPath, Encoding.UTF8))
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                try
+                {
+                    var entry = JsonSerializer.Deserialize<MetadataBackupEntry>(line);
+                    if (entry != null)
+                    {
+                        entries.Add(entry);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogWarning($"[MetadataBackupService] Failed to parse journal entry: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.LogWarning($"[MetadataBackupService] Failed to read journal from '{JournalPath}': {ex.Message}");
+        }
+
+        return entries;
+    }
+
+    private List<MetadataBackupEntry> CompactJournalInternal()
+    {
+        var manifest = LoadManifestFileOnly();
+        var journalEntries = LoadJournalEntriesOnly();
+
+        if (journalEntries.Count == 0)
+        {
+            if (File.Exists(JournalPath))
+            {
+                try { File.Delete(JournalPath); } catch { }
+            }
+            ResetUncompactedCount();
+            return manifest;
+        }
+
+        var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var merged = new List<MetadataBackupEntry>();
+
+        // Journal records are chronological; reverse so newest is at the front
+        for (int i = journalEntries.Count - 1; i >= 0; i--)
+        {
+            var entry = journalEntries[i];
+            if (seenIds.Add(entry.Id))
+            {
+                merged.Add(entry);
+            }
+        }
+
+        foreach (var entry in manifest)
+        {
+            if (seenIds.Add(entry.Id))
+            {
+                merged.Add(entry);
+            }
+        }
+
+        // Keep manifest at max 1000 items
+        if (merged.Count > 1000)
+        {
+            var excess = merged.Skip(1000).ToList();
+            merged = merged.Take(1000).ToList();
+
+            foreach (var old in excess)
+            {
+                string oldXml = Path.Combine(BackupDirectory, old.BackupXmlFileName);
+                if (File.Exists(oldXml))
+                {
+                    try { File.Delete(oldXml); } catch { /* Ignore */ }
+                }
+            }
+        }
+
+        bool saved = SaveManifestInternal(merged);
+        if (saved && File.Exists(JournalPath))
+        {
+            try
+            {
+                File.Delete(JournalPath);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogWarning($"[MetadataBackupService] Failed to delete journal file after compaction: {ex.Message}");
+            }
+        }
+
+        ResetUncompactedCount();
+        return merged;
+    }
+
+    private bool SaveManifestInternal(List<MetadataBackupEntry> manifest)
     {
         try
         {
             string json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
             AtomicFile.WriteAllText(ManifestPath, json, Encoding.UTF8);
+            return true;
         }
         catch (Exception ex)
         {
             AppLogger.LogWarning($"[MetadataBackupService] Failed to save manifest: {ex.Message}");
+            return false;
         }
     }
 

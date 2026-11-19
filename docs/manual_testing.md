@@ -17,6 +17,31 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #20]: Append-Oriented Backup Journal Verification
+* **Branch / Commit:** `perf/issue-20-backup-manifest-journal`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`MetadataBackupService.cs`), `InkTag.Mcp` (`ComicTools.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that modifying comic archives appends lightweight records to `backups_journal.jsonl` without constantly rewriting `backups_manifest.json`, and that querying or restoring backups seamlessly reconciles the journal.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Journal Creation on Archive Edit):**
+  1. Locate the InkTag backups directory:
+     - macOS/Linux: `~/.local/share/InkTag/backups/`
+     - Windows: `%LOCALAPPDATA%\InkTag\backups\`
+  2. Perform an edit or tag on a comic archive (via CLI `inntag read` or GUI save).
+  3. Verify `backups_journal.jsonl` exists in the backups directory and contains a single-line JSON record for the touched comic.
+- [ ] **Step 2 (Verify Manifest Compaction on Query):**
+  1. List backups using MCP `list_comic_backups` or execute `MetadataBackupService.ListBackups`.
+  2. Verify that `backups_journal.jsonl` is removed and its record has been compacted into `backups_manifest.json`.
+  3. Verify the newly edited comic backup entry appears at the top of the list with full provenance metadata.
+
+* **Expected Result:** Backup edits append to `backups_journal.jsonl` with zero write amplification, and read queries reconcile the journal into `backups_manifest.json`.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #22]: CLI System.CommandLine Migration Verification
 * **Branch / Commit:** `refactor/issue-22-system-commandline`
 * **Date Added:** 2026-11-19

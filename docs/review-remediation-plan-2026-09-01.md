@@ -35,7 +35,7 @@ the same branch, and open a GitHub issue for every deferred item.
 | M6 | Med | ComicVine / Komga secrets written to `settings.json` in plaintext, default perms | `src/InkTag.Core/Configuration/AppSettings.cs:166` |
 | M7 | Med | `RestoreBatchJob` documented as "atomic" but is a best-effort file-by-file loop | `src/InkTag.Core/Backup/MetadataBackupService.cs:291` |
 | M8 | Med | Manifest / settings / cache writes are non-atomic and fail silently | `src/InkTag.Core/Backup/MetadataBackupService.cs:375` |
-| L1 | Low | Manifest fully re-serialized and rewritten on every archive edit | `MetadataBackupService.cs:139` |
+| L1 | Low | Manifest fully re-serialized and rewritten on every archive edit — ✅ **fixed in Phase 7 (#20)** | `MetadataBackupService.cs:139` |
 | L2 | Low | `AppLogger` reopens + stats the log file per line under a global lock | `AppLogger.cs:103` |
 | L3 | Low | Page stripping takes no provenance snapshot; fixed `.bak` name clobbers / collides | `ComicArchiveHandler.cs:625` |
 | L4 | Low | Hard-coded "Buffy" title rewrites in a general-purpose service | `MetadataScraperService.cs:54` |
@@ -289,9 +289,9 @@ Tracked against `aurora7795/InkTag`:
 - [**#19**](https://github.com/aurora7795/InkTag/issues/19) — **L2 · `AppLogger` buffered file I/O.**
   Keep a `StreamWriter` open (or a flush timer) instead of `File.AppendAllText` + `FileInfo` stat
   per line; rotation must close/reopen the handle. (Resolved in #19).
-- [**#20**](https://github.com/aurora7795/InkTag/issues/20) — **L1 · Manifest write amplification.**
+- [x] [**#20**](https://github.com/aurora7795/InkTag/issues/20) — **L1 · Manifest write amplification.**
   `MetadataBackupService.CreateBackup` rewrites the whole (capped-1000) manifest per edit; move to
-  an append-oriented journal or a batched flush. Pairs with M8 (Phase 5 atomic writes).
+  an append-oriented journal or a batched flush. Pairs with M8 (Phase 5 atomic writes). (Resolved in #20).
 - [**#21**](https://github.com/aurora7795/InkTag/issues/21) — **M7 (full) · True atomic batch
   rollback.** Stage every XML rewrite to a temp CBZ, then swap them all with a recovery journal so
   a mid-run crash leaves either the old or the new state, never a mix. (Phase 5 P5-C only fixes the
@@ -345,3 +345,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L8 resolved (#22): migrated `InkTag.Cli` to `System.CommandLine`, adding `--option=value` support, typed argument binding, and comprehensive CLI integration tests. |
 | 2026-11-19 | L5 resolved (#39): introduced `InkTagVersion.Current` for dynamic assembly version resolution in ComicVineProvider tagging notes. |
 | 2026-11-19 | L9 resolved (#40): guarded `PerceptualHashService.ComputeDHash` against decompression bombs by inspecting codec dimensions before full bitmap decode. |
+| 2026-11-19 | L1 resolved (#20): introduced append-oriented journal in MetadataBackupService to eliminate O(n) manifest rewrites during bulk tagging. |
