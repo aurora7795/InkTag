@@ -268,8 +268,8 @@ The finding is really two smaller things:
 
 **Branch:** `chore/review-polish-bundle` — L4–L7, L9. Low-risk, batchable.
 
-- [ ] **L5** `ComicVineProvider.cs:600` — resolve the version from the assembly unconditionally;
-      remove the `"0.12.0"` literal (consider a shared `InkTagVersion` constant).
+- [x] **L5** `ComicVineProvider.cs:600` — resolve the version from the assembly unconditionally;
+      remove the `"0.12.0"` literal (consider a shared `InkTagVersion` constant). Fixed in #39.
 - [x] **L4** `MetadataScraperService.cs:54` — move the "Buffy" title rules into a
       `SeriesAliasResolver` backed by a small data table. Fixed in #36.
 - [x] **L6** `KomgaClient.CleanServerUrl` — `AppLogger.LogWarning` when it injects `http://` for a
@@ -343,3 +343,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L2 resolved (#19): held persistent open `StreamWriter` with in-memory size tracking in `AppLogger` to eliminate per-line stat and open I/O lock contention. |
 | 2026-11-19 | M5 resolved (#33): added `BulkScrapeOptions.DiscardCoverBytesAfterHash` and updated visual match ViewModel binding to release raw cover byte buffers post-hash computation. |
 | 2026-11-19 | L8 resolved (#22): migrated `InkTag.Cli` to `System.CommandLine`, adding `--option=value` support, typed argument binding, and comprehensive CLI integration tests. |
+| 2026-11-19 | L5 resolved (#39): introduced `InkTagVersion.Current` for dynamic assembly version resolution in ComicVineProvider tagging notes. |

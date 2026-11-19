@@ -605,8 +605,7 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
 
     public static string GenerateTaggingNote(string issueId, string? volumeId = null, double? visualSimilarity = null)
     {
-        var asmVer = typeof(ComicVineProvider).Assembly.GetName().Version;
-        string version = asmVer != null ? $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}" : "0.12.0";
+        string version = InkTagVersion.Current;
         string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         string volStr = !string.IsNullOrWhiteSpace(volumeId) ? $" [Volume ID {volumeId.Trim()}]" : "";
         string visualStr = visualSimilarity.HasValue ? $" [Cover Match {(int)Math.Round(visualSimilarity.Value * 100, MidpointRounding.AwayFromZero)}%]" : "";

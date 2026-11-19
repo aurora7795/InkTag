@@ -10,6 +10,24 @@ namespace InkTag.Tests;
 public class TaggingNotesTests
 {
     [Fact]
+    public void InkTagVersion_ResolvesValidSemverString()
+    {
+        string ver = InkTagVersion.Current;
+        Assert.False(string.IsNullOrWhiteSpace(ver));
+        Assert.NotEqual("0.12.0", ver);
+        Assert.NotEqual("dev", ver);
+        Assert.Equal("0.14.1", ver);
+    }
+
+    [Fact]
+    public void GenerateTaggingNote_IncludesDynamicVersion()
+    {
+        string note = ComicVineProvider.GenerateTaggingNote("120048", "18234");
+        Assert.Contains($"Tagged with InkTag {InkTagVersion.Current} ", note);
+        Assert.DoesNotContain("0.12.0", note);
+    }
+
+    [Fact]
     public void GenerateTaggingNote_WithVolumeId_GeneratesExtendedAttributionFormat()
     {
         string note = ComicVineProvider.GenerateTaggingNote("120048", "18234");
