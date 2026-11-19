@@ -235,14 +235,14 @@ visible `Image.Source`. **Do not re-add unconditional disposal.**
 
 The finding is really two smaller things:
 
-- [ ] **Fix the inaccurate docstring first (low-risk; fold into Phase 7 or do standalone).** The
+- [x] **Fix the inaccurate docstring first (low-risk; fold into Phase 7 or do standalone).** The
       `LruImageCache` summary claims it "automatically disposes evicted bitmap instances… Prevents
       unmanaged memory leaks" — it does not. Reword it to describe the actual behaviour: a bounded
-      cache that drops references and lets the GC/finalizer reclaim the bitmap.
-- [ ] **Then decide whether a real leak fix is worth it.** Evicted-but-still-displayed bitmaps are
+      cache that drops references and lets the GC/finalizer reclaim the bitmap. (Fixed in #34).
+- [x] **Then decide whether a real leak fix is worth it.** Evicted-but-still-displayed bitmaps are
       reclaimed on finalization; the practical exposure is a transient spike during fast scrolling,
       not an unbounded leak. Options, in order of preference:
-  - Leave it and just fix the docs (recommended unless profiling shows a real problem).
+  - Leave it and just fix the docs (recommended unless profiling shows a real problem; evaluated in #34: reference-dropping avoids layout crashes, GC reclaims detached bitmaps).
   - Ref-count: the cache disposes an evicted bitmap only once the last consumer (the bound
     `Image`) releases it — needs a wrapper type and disciplined release in the VMs.
   - Pinned-key exemption: the VM marks the on-screen cover key as non-evictable; the cache may
@@ -336,3 +336,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-09-03 | Phase 3 completed (`refactor/scrape-merge-semantics`, commit `d2ef910`, merged `9e89dab`). |
 | 2026-11-19 | Formalized GitHub issue capture protocol and populated issues #29 through #38 from uncompleted phases (M2, L3, M8, M6, M5, M1, L7, L4, L6, GUI layout explorations). |
 | 2026-11-19 | L6 resolved (#37): emitted warning on unencrypted HTTP Komga server URLs before transmitting credentials. |
+| 2026-11-19 | M1 resolved (#34): corrected `LruImageCache` XML docstrings to accurately document reference-dropping bounded cache architecture and evaluated unmanaged GC reclamation. |
