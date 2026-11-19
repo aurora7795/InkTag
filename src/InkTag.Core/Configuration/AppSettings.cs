@@ -136,9 +136,9 @@ public class AppSettingsService
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback to default on read error
+            Logging.AppLogger.LogWarning($"Failed to read settings from '{_settingsFilePath}': {ex.Message}");
         }
 
         return new AppSettings();
@@ -164,10 +164,27 @@ public class AppSettingsService
 
             string json = JsonSerializer.Serialize(Settings, JsonOptions);
             File.WriteAllText(_settingsFilePath, json);
+
+            // Restrict file access to current user only on Unix systems (POSIX 0600 file, 0700 dir)
+            if (!OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    File.SetUnixFileMode(_settingsFilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    {
+                        File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logging.AppLogger.LogWarning($"Failed to set restrictive Unix permissions on '{_settingsFilePath}': {ex.Message}");
+                }
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore write errors or log
+            Logging.AppLogger.LogWarning($"Failed to save settings to '{_settingsFilePath}': {ex.Message}");
         }
     }
 }

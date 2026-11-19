@@ -17,6 +17,33 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #32]: Restrict Filesystem Permissions on settings.json (Unix 0600 / 0700)
+* **Branch / Commit:** `fix/issue-32-settings-file-permissions`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`AppSettingsService.cs`, Settings persistence)
+* **Environment / OS:** macOS or Linux (Unix permissions)
+* **Goal:** Verify that `~/.config/InkTag/settings.json` is saved with `0600` (`-rw-------`) and its directory with `0700` (`drwx------`) to prevent unauthorized local user access to ComicVine and Komga credentials.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Trigger Settings Save):**
+  1. Launch InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Open `Settings` (from menu or toolbar).
+  3. Enter or change a setting (e.g. enter dummy ComicVine API key or toggle Theme), then click **Save**.
+- [ ] **Step 2 (Inspect Terminal Permissions):**
+  1. In terminal, inspect the permissions:
+     ```bash
+     ls -la ~/.config/InkTag/settings.json
+     ls -ld ~/.config/InkTag
+     ```
+  2. Verify `settings.json` has `-rw-------` permissions (mode `0600`).
+  3. Verify `~/.config/InkTag` directory has `drwx------` permissions (mode `0700`).
+
+* **Expected Result:** The configuration directory and file are restricted so that only the current user account has read/write permissions.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #35]: Windows Reserved Filenames & Trailing Dots Sanitization
 * **Branch / Commit:** `fix/issue-35-windows-reserved-filenames` / `6fcaeb3`
 * **Date Added:** 2026-11-19
