@@ -66,6 +66,9 @@ This page details the testing strategy and validation checklists for verifying t
 
 ## 📋 Manual Quality Checklist
 
+> [!NOTE]
+> For active, issue-specific verification activities queued for testing at the keyboard, refer to the living [**Manual Testing Queue (`docs/manual_testing.md`)**](../manual_testing.md).
+
 ### Phase 1: Directory Operations & Scanner UX
 1. **Open Directory**: Click *Open Folder*, pick a path with mixed folders and archives. Check that scanning runs in parallel on background threads with real-time numeric progress (`Scanning: X/Y files`).
 2. **Cancel Scan**: Click `✕ Cancel` during a long scan. Confirm the scan stops immediately and retains whatever files were already processed.

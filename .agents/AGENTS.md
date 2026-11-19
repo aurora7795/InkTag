@@ -49,6 +49,11 @@ Apply appropriate labels when creating or triaging issues:
   - When cutting releases or logging changes in `CHANGELOG.md`, reference the issue number.
   - Ensure the issue is closed upon merging or resolving.
 
+## Manual Verification Queue Rules (manual_testing.md)
+- Maintaining [`manual_testing.md`](../manual_testing.md) is a **MANDATORY requirement** whenever changes involve UI/UX behavior, filesystem operations, external APIs, OS-specific behavior, or batch processing.
+- **Queueing Verification Steps**: Before concluding an issue or work session, the agent must append a structured entry under `## ⏳ Pending Manual Verification` in `manual_testing.md` with explicit, step-by-step test instructions and expected results for the user to execute at the keyboard.
+- **User Resolution**: The user checks off items (`- [x]`) upon hands-on verification and moves completed blocks to `## ✅ Completed Verifications`.
+
 ## Changelog Maintenance Rules
 - Maintaining [CHANGELOG.md](../CHANGELOG.md) is a **MANDATORY requirement**.
 - Every feature, bugfix, or release must update `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) standards (`Added`, `Changed`, `Fixed`, `Security`).

@@ -55,6 +55,11 @@ GitHub Issues serve as the single source of truth and central backlog for all pe
      * Note the issue number in `CHANGELOG.md` entries where applicable.
      * Ensure the issue is closed upon merging or resolving.
 
+### 1.5 Manual Verification Queue (manual_testing.md)
+* **Living QA Ledger**: Maintaining [`manual_testing.md`](manual_testing.md) is mandatory whenever changes touch UI/UX behavior, filesystem operations, external APIs, OS-specific behavior, or batch processing.
+* **Queueing Activities**: Before completing an issue or work session, the agent must append a structured entry under `## ⏳ Pending Manual Verification` in `manual_testing.md` outlining explicit step-by-step test instructions and expected results for the user to execute at the keyboard.
+* **Hands-on Execution**: The user verifies the items at the keyboard, checks the boxes (`- [x]`), and moves finished entries to `## ✅ Completed Verifications`.
+
 ---
 
 ## 2. Coding & Design Standards
