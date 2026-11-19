@@ -52,6 +52,13 @@ public static class ComicFileRenamer
     private static readonly Regex LeadingPunctuationRegex = new(@"^[\s\-–—_:,]+", RegexOptions.Compiled);
     private static readonly Regex RedundantSeparatorsRegex = new(@"\s*[-–—_]\s*[-–—_]+\s*", RegexOptions.Compiled);
 
+    private static readonly HashSet<string> WindowsReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL", "CLOCK$",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+
     /// <summary>
     /// Generates a standardized, filesystem-safe filename from comic metadata and a template pattern.
     /// </summary>
@@ -140,8 +147,19 @@ public static class ComicFileRenamer
         // Graceful collapse of empty tokens and brackets
         result = CleanAndCollapseFilename(result);
 
-        // Sanitize illegal filesystem characters
+        // Sanitize illegal filesystem characters, Windows reserved names, and trailing dots/spaces
         result = SanitizeFilename(result);
+
+        // Fallback if sanitization reduced the name to empty
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            string fallback = Path.GetFileNameWithoutExtension(originalFilePath);
+            result = SanitizeFilename(fallback);
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                result = "Untitled";
+            }
+        }
 
         // Append extension
         return $"{result}{originalExt}";
@@ -324,6 +342,36 @@ public static class ComicFileRenamer
         return clean;
     }
 
+    /// <summary>
+    /// Checks whether a filename or its stem is a Windows reserved device name (CON, PRN, AUX, NUL, COM1-9, LPT1-9, CLOCK$).
+    /// </summary>
+    public static bool IsWindowsReservedName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+
+        string trimmed = name.Trim();
+        if (WindowsReservedDeviceNames.Contains(trimmed))
+        {
+            return true;
+        }
+
+        int dotIndex = trimmed.IndexOf('.');
+        if (dotIndex > 0)
+        {
+            string stem = trimmed.Substring(0, dotIndex);
+            if (WindowsReservedDeviceNames.Contains(stem))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Sanitizes illegal filesystem characters, trims trailing periods and whitespace,
+    /// and escapes Windows reserved device names.
+    /// </summary>
     public static string SanitizeFilename(string filename)
     {
         if (string.IsNullOrWhiteSpace(filename)) return string.Empty;
@@ -339,6 +387,17 @@ public static class ComicFileRenamer
 
         // Collapse multiple spaces
         sanitized = MultipleSpacesRegex.Replace(sanitized, " ").Trim();
+
+        // Trim trailing periods and spaces (Windows disallowed trailing characters)
+        sanitized = sanitized.TrimEnd('.', ' ');
+
+        if (string.IsNullOrWhiteSpace(sanitized)) return string.Empty;
+
+        // Escape Windows reserved device names (e.g. CON -> _CON, aux.cbz -> _aux.cbz)
+        if (IsWindowsReservedName(sanitized))
+        {
+            sanitized = "_" + sanitized;
+        }
 
         return sanitized;
     }

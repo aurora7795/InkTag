@@ -8,7 +8,7 @@ This page details the testing strategy and validation checklists for verifying t
 
 ### 1. Unit & Integration Test Suite (`InkTag.Tests`)
 * **Target Project**: `tests/InkTag.Tests/InkTag.Tests.csproj`
-* **Test Classes & Coverage (211 Tests)**:
+* **Test Classes & Coverage (249 Tests)**:
   * **`McpSecurityAndBackupTests` & `BatchRollbackAndProvenanceTests`**:
     * Automated pre-write `ComicInfo.xml` snapshot creation upon mutating tool invocation.
     * Strict read-only mode (`INKTAG_MCP_READ_ONLY=true` / `--read-only`) preventing all file modifications.
@@ -31,7 +31,7 @@ This page details the testing strategy and validation checklists for verifying t
     * Metadata writing back to CBZ archives and auto-renaming archives on disk (`renameFiles: true`).
   * **`RenamingTests`**:
     * Standard template formatting, story title inclusion, numberless formatting, and decimal/fraction issue padding.
-    * Illegal filesystem character sanitization and graceful empty token/parenthesis collapsing.
+    * Illegal filesystem character sanitization, Windows reserved device name escaping (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`, `CLOCK$`), trailing period/whitespace trimming, and graceful empty token/parenthesis collapsing.
     * Scanner tag handling: clearing scanner/release tags by default, and preserving tags when `{ScanInfo}` is requested.
     * Collision detection across batch files and against existing disk paths.
     * Atomic file renaming and batch execution.

@@ -143,6 +143,99 @@ public class RenamingTests
         Assert.Equal("Spider-Man - Life Story #1 - The '60s - All-Out War (2019).cbz", filename);
     }
 
+    [Theory]
+    [InlineData("CON", "_CON")]
+    [InlineData("con", "_con")]
+    [InlineData("PRN", "_PRN")]
+    [InlineData("prn", "_prn")]
+    [InlineData("AUX", "_AUX")]
+    [InlineData("aux", "_aux")]
+    [InlineData("NUL", "_NUL")]
+    [InlineData("nul", "_nul")]
+    [InlineData("COM1", "_COM1")]
+    [InlineData("com9", "_com9")]
+    [InlineData("LPT1", "_LPT1")]
+    [InlineData("lpt9", "_lpt9")]
+    [InlineData("CLOCK$", "_CLOCK$")]
+    [InlineData("CON.cbz", "_CON.cbz")]
+    [InlineData("aux.cbr", "_aux.cbr")]
+    [InlineData("nul.xml", "_nul.xml")]
+    [InlineData("COM3.tar.gz", "_COM3.tar.gz")]
+    public void SanitizeFilename_EscapesWindowsReservedDeviceNames(string input, string expected)
+    {
+        string actual = ComicFileRenamer.SanitizeFilename(input);
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData("Spider-Man.", "Spider-Man")]
+    [InlineData("Spider-Man. ", "Spider-Man")]
+    [InlineData("Spider-Man... ", "Spider-Man")]
+    [InlineData("Batman   ", "Batman")]
+    [InlineData("S.H.I.E.L.D.", "S.H.I.E.L.D")]
+    [InlineData("Vol. 1", "Vol. 1")]
+    [InlineData("...", "")]
+    [InlineData(" . . . ", "")]
+    public void SanitizeFilename_TrimsTrailingPeriodsAndSpaces(string input, string expected)
+    {
+        string actual = ComicFileRenamer.SanitizeFilename(input);
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData("Conan the Barbarian", "Conan the Barbarian")]
+    [InlineData("Contact #1", "Contact #1")]
+    [InlineData("Context.cbz", "Context.cbz")]
+    [InlineData("Auxiliary", "Auxiliary")]
+    [InlineData("Null and Void", "Null and Void")]
+    [InlineData("COM10", "COM10")]
+    [InlineData("LPT0", "LPT0")]
+    public void SanitizeFilename_PreservesValidNonReservedNames(string input, string expected)
+    {
+        string actual = ComicFileRenamer.SanitizeFilename(input);
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void GenerateFilename_EscapesWindowsReservedNames()
+    {
+        var comic = new ComicInfo
+        {
+            Series = "CON"
+        };
+
+        string filename = ComicFileRenamer.GenerateFilename(comic, "original.cbz", "{Series}");
+        Assert.Equal("_CON.cbz", filename);
+
+        comic.Series = "aux";
+        filename = ComicFileRenamer.GenerateFilename(comic, "original.cbz", "{Series}");
+        Assert.Equal("_aux.cbz", filename);
+    }
+
+    [Fact]
+    public void GenerateFilename_TrimsTrailingPeriods_PreventingDoubleExtensionDot()
+    {
+        var comic = new ComicInfo
+        {
+            Series = "Spider-Man Vol."
+        };
+
+        string filename = ComicFileRenamer.GenerateFilename(comic, "original.cbz", "{Series}");
+        Assert.Equal("Spider-Man Vol.cbz", filename);
+    }
+
+    [Fact]
+    public void GenerateFilename_FallsBackWhenSanitizationYieldsEmpty()
+    {
+        var comic = new ComicInfo
+        {
+            Series = "..."
+        };
+
+        string filename = ComicFileRenamer.GenerateFilename(comic, "OriginalName.cbz", "{Series}");
+        Assert.Equal("OriginalName.cbz", filename);
+    }
+
     [Fact]
     public void PreviewBatchRename_DetectsCollisionsCorrectly()
     {

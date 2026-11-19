@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GitHub Issue Templates**: Added structured issue templates under `.github/ISSUE_TEMPLATE/` (`bug_report.md`, `feature_request.md`, `deferred_work.md`) and established repository labels for `deferred` and `tech-debt`.
 - **Backlog Population (#29–#38)**: Audited existing review reports (`docs/review-remediation-plan-2026-09-01.md`) and design explorations (`docs/design/README.md`) to file 10 comprehensive GitHub Issues covering archive repack integrity (#29), page-strip provenance (#30), atomic persistence (#31), secrets permissions (#32), bulk scrape memory (#33), image cache reclamation (#34), Windows filename sanitization (#35), scraper series alias extraction (#36), Komga HTTP warning (#37), and GUI health dashboard / navigation rail (#38).
 
+### Fixed
+- **Windows Reserved Filename Sanitization**: `ComicFileRenamer.SanitizeFilename` now escapes Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, `CLOCK$`) with an underscore prefix (e.g. `_CON.cbz`) and trims trailing periods and whitespace, preventing runtime I/O exceptions on Windows and SMB storage mounts. Resolves [#35](https://github.com/aurora7795/InkTag/issues/35).
+
 
 ---
 
