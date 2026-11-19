@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 
 namespace InkTag.Core.Logging;
 
@@ -10,6 +11,21 @@ public static class AppLogger
 {
     private static readonly object LogLock = new();
     private static string? _logFilePath;
+    private static StreamWriter? _logWriter;
+    private static string? _writerFilePath;
+    private static long _currentFileSizeBytes;
+
+    static AppLogger()
+    {
+        try
+        {
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => CloseWriter();
+        }
+        catch
+        {
+            // Ignore environment hooks failure
+        }
+    }
 
     /// <summary>
     /// Gets the current log file path.
@@ -23,6 +39,7 @@ public static class AppLogger
     {
         lock (LogLock)
         {
+            CloseWriterInternal();
             _logFilePath = customLogPath ?? GetDefaultLogFilePath();
 
             var dir = Path.GetDirectoryName(_logFilePath);
@@ -85,6 +102,7 @@ public static class AppLogger
                 var fileInfo = new FileInfo(path);
                 if (fileInfo.Length >= MaxLogFileSizeBytes)
                 {
+                    CloseWriterInternal();
                     string backupPath = path + ".bak";
                     if (File.Exists(backupPath))
                     {
@@ -97,6 +115,62 @@ public static class AppLogger
         catch
         {
             // Ignore rotation errors
+        }
+    }
+
+    private static void EnsureWriterOpen(string path)
+    {
+        if (_logWriter != null && string.Equals(_writerFilePath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        CloseWriterInternal();
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        RotateLogIfNeeded(path);
+
+        var fileStream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+        _logWriter = new StreamWriter(fileStream, Encoding.UTF8) { AutoFlush = true };
+        _writerFilePath = path;
+        _currentFileSizeBytes = fileStream.Length;
+    }
+
+    /// <summary>
+    /// Flushes and closes the active log writer if open.
+    /// </summary>
+    public static void CloseWriter()
+    {
+        lock (LogLock)
+        {
+            CloseWriterInternal();
+        }
+    }
+
+    private static void CloseWriterInternal()
+    {
+        if (_logWriter != null)
+        {
+            try
+            {
+                _logWriter.Flush();
+                _logWriter.Dispose();
+            }
+            catch
+            {
+                // Suppress disposal exceptions
+            }
+            finally
+            {
+                _logWriter = null;
+                _writerFilePath = null;
+                _currentFileSizeBytes = 0;
+            }
         }
     }
 
@@ -115,15 +189,19 @@ public static class AppLogger
             lock (LogLock)
             {
                 string path = LogFilePath;
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                EnsureWriterOpen(path);
+
+                if (_logWriter != null)
                 {
-                    Directory.CreateDirectory(dir);
+                    _logWriter.WriteLine(formattedLine);
+                    _currentFileSizeBytes += Encoding.UTF8.GetByteCount(formattedLine) + Environment.NewLine.Length;
+
+                    if (_currentFileSizeBytes >= MaxLogFileSizeBytes)
+                    {
+                        CloseWriterInternal();
+                        RotateLogIfNeeded(path);
+                    }
                 }
-
-                RotateLogIfNeeded(path);
-
-                File.AppendAllText(path, formattedLine + Environment.NewLine);
             }
         }
         catch

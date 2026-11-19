@@ -288,7 +288,7 @@ Tracked against `aurora7795/InkTag`:
 
 - [**#19**](https://github.com/aurora7795/InkTag/issues/19) — **L2 · `AppLogger` buffered file I/O.**
   Keep a `StreamWriter` open (or a flush timer) instead of `File.AppendAllText` + `FileInfo` stat
-  per line; rotation must close/reopen the handle.
+  per line; rotation must close/reopen the handle. (Resolved in #19).
 - [**#20**](https://github.com/aurora7795/InkTag/issues/20) — **L1 · Manifest write amplification.**
   `MetadataBackupService.CreateBackup` rewrites the whole (capped-1000) manifest per edit; move to
   an append-oriented journal or a batched flush. Pairs with M8 (Phase 5 atomic writes).
@@ -340,3 +340,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L4 resolved (#36): extracted franchise-specific series title expansions into `SeriesAliasResolver`. |
 | 2026-11-19 | L3 resolved (#30): captured pre-mutation metadata backup provenance and non-clobbering GUID swap backups during page stripping. |
 | 2026-11-19 | M8 resolved (#31): introduced `AtomicFile` atomic write-replace pattern across settings, manifests, and cache, with corrupt file diagnostic warnings. |
+| 2026-11-19 | L2 resolved (#19): held persistent open `StreamWriter` with in-memory size tracking in `AppLogger` to eliminate per-line stat and open I/O lock contention. |

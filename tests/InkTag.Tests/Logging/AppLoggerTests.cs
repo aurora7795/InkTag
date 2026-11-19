@@ -49,6 +49,44 @@ public class AppLoggerTests
     private static readonly object TestSync = new();
 
     [Fact]
+    public void AppLogger_StreamWriter_FlushesImmediatelyAndReleasesOnClose()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "InkTagStreamTests_" + Guid.NewGuid().ToString("N"));
+        string customLogPath = Path.Combine(tempDir, "stream_test.log");
+
+        try
+        {
+            AppLogger.Initialize(customLogPath);
+
+            // Log message
+            AppLogger.LogInfo("Immediate Flush Check Line 1");
+            AppLogger.LogInfo("Immediate Flush Check Line 2");
+
+            // Verify content is immediately readable by concurrent reader due to AutoFlush and FileShare.ReadWrite
+            string content = File.ReadAllText(customLogPath);
+            Assert.Contains("Immediate Flush Check Line 1", content);
+            Assert.Contains("Immediate Flush Check Line 2", content);
+
+            // Explicitly close writer
+            AppLogger.CloseWriter();
+
+            // After close, verify file can be moved or deleted without handle lock
+            string movedPath = customLogPath + ".moved";
+            File.Move(customLogPath, movedPath);
+            Assert.True(File.Exists(movedPath));
+            File.Delete(movedPath);
+        }
+        finally
+        {
+            AppLogger.CloseWriter();
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
+        }
+    }
+
+    [Fact]
     public void AppLogger_LogDebug_WritesOnlyWhenEnabled()
     {
         lock (TestSync)
