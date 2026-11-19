@@ -8,6 +8,7 @@ using SharpCompress.Archives;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Zip;
+using InkTag.Core.Backup;
 using InkTag.Core.Images;
 using InkTag.Core.Logging;
 using InkTag.Core.Parsing;
@@ -542,13 +543,14 @@ internal static class ComicArchiveHandler
             // 3. Update ComicInfo.xml if present
             string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
             ComicInfo comicInfo;
+            string? originalXmlContent = null;
 
             if (File.Exists(xmlPath))
             {
                 try
                 {
-                    string xmlContent = File.ReadAllText(xmlPath);
-                    comicInfo = ComicInfoXmlSanitizer.DeserializeComicInfo(xmlContent);
+                    originalXmlContent = File.ReadAllText(xmlPath);
+                    comicInfo = ComicInfoXmlSanitizer.DeserializeComicInfo(originalXmlContent);
                 }
                 catch (Exception ex)
                 {
@@ -621,26 +623,65 @@ internal static class ComicArchiveHandler
                 }
             }
 
-            // Atomic swap
-            backupOriginalPath = filePath + ".bak";
-            backupTargetPath = targetPath + ".bak";
+            // 5. Pre-mutation metadata backup snapshot
+            try
+            {
+                var backupService = new MetadataBackupService();
+                backupService.CreateBackup(
+                    filePath,
+                    originalXmlContent,
+                    "RemoveArchivePages",
+                    changeReason: $"Removed {result.RemovedCount} page(s): {string.Join(", ", result.RemovedEntries)}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogWarning($"Pre-mutation metadata backup failed for '{filePath}' during RemoveArchivePages: {ex.Message}");
+            }
 
-            if (File.Exists(backupOriginalPath)) File.Delete(backupOriginalPath);
-            if (File.Exists(backupTargetPath) && backupTargetPath != backupOriginalPath) File.Delete(backupTargetPath);
+            // 6. Atomic swap with unique non-clobbering backup filenames
+            string guidSuffix = Guid.NewGuid().ToString("N");
+            backupOriginalPath = filePath + ".orig.bak." + guidSuffix;
+            backupTargetPath = targetPath.Equals(filePath, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : targetPath + ".target.bak." + guidSuffix;
+
+            if (backupTargetPath != null && File.Exists(targetPath))
+            {
+                File.Move(targetPath, backupTargetPath);
+            }
 
             File.Move(filePath, backupOriginalPath);
 
-            if (File.Exists(targetPath))
+            try
             {
-                File.Delete(targetPath);
+                File.Move(tempCbzPath, targetPath);
+                tempCbzPath = null;
+            }
+            catch (Exception)
+            {
+                // Rollback swap
+                if (File.Exists(targetPath)) File.Delete(targetPath);
+                if (backupTargetPath != null && File.Exists(backupTargetPath))
+                {
+                    File.Move(backupTargetPath, targetPath);
+                    backupTargetPath = null;
+                }
+                if (File.Exists(backupOriginalPath))
+                {
+                    File.Move(backupOriginalPath, filePath);
+                    backupOriginalPath = null;
+                }
+                throw;
             }
 
-            File.Move(tempCbzPath, targetPath);
-            tempCbzPath = null;
-
+            // Clean up temporary swap backups on success
+            if (backupTargetPath != null && File.Exists(backupTargetPath))
+            {
+                try { File.Delete(backupTargetPath); } catch { }
+            }
             if (File.Exists(backupOriginalPath))
             {
-                File.Delete(backupOriginalPath);
+                try { File.Delete(backupOriginalPath); } catch { }
             }
 
             result.Success = true;
@@ -659,6 +700,15 @@ internal static class ComicArchiveHandler
                 {
                     if (File.Exists(filePath)) File.Delete(filePath);
                     File.Move(backupOriginalPath, filePath);
+                }
+                catch { }
+            }
+            if (backupTargetPath != null && File.Exists(backupTargetPath))
+            {
+                try
+                {
+                    if (File.Exists(targetPath)) File.Delete(targetPath);
+                    File.Move(backupTargetPath, targetPath);
                 }
                 catch { }
             }

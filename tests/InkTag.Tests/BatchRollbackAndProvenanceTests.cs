@@ -183,4 +183,69 @@ public class BatchRollbackAndProvenanceTests : IDisposable
             if (File.Exists(cbz)) File.Delete(cbz);
         }
     }
+
+    private string CreateMultiPageTestCbz(string title, string series, int pageCount)
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        for (int i = 1; i <= pageCount; i++)
+        {
+            string imagePath = Path.Combine(tempDir, $"{i:D3}.jpg");
+            File.WriteAllBytes(imagePath, new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 });
+        }
+
+        string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
+        File.WriteAllText(xmlPath, $"<ComicInfo><Title>{title}</Title><Series>{series}</Series><PageCount>{pageCount}</PageCount></ComicInfo>");
+
+        string cbzPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cbz");
+        ZipFile.CreateFromDirectory(tempDir, cbzPath);
+        Directory.Delete(tempDir, true);
+
+        return cbzPath;
+    }
+
+    [Fact]
+    public void RemoveArchivePages_CreatesMetadataBackupSnapshotAndPreservesExistingBakFile()
+    {
+        string cbz = CreateMultiPageTestCbz("Intro Book", "Superhero Series", 3);
+        string existingBak = cbz + ".bak";
+        File.WriteAllText(existingBak, "Precious Existing User Backup Data");
+
+        try
+        {
+            var editor = new MetadataEditor();
+            var result = editor.RemoveArchivePages(cbz, new[] { 0 });
+
+            Assert.True(result.Success);
+            Assert.Equal(3, result.OriginalPageCount);
+            Assert.Equal(2, result.FinalPageCount);
+            Assert.Equal(1, result.RemovedCount);
+
+            // Verify pre-existing .bak file was NOT deleted or overwritten
+            Assert.True(File.Exists(existingBak));
+            Assert.Equal("Precious Existing User Backup Data", File.ReadAllText(existingBak));
+
+            // Verify a metadata backup entry was created with provenance
+            var backupService = new MetadataBackupService(_testBackupDir);
+            var backups = backupService.ListBackups(cbz);
+            Assert.NotEmpty(backups);
+
+            var entry = backupService.GetBackupEntry(backups[0].Id);
+            Assert.NotNull(entry);
+            Assert.Equal("RemoveArchivePages", entry.OperationType);
+            Assert.Contains("Removed 1 page(s)", entry.ChangeReason);
+
+            // Verify backup contains the pre-mutation XML
+            string? backupXml = backupService.GetBackupXml(entry.Id);
+            Assert.NotNull(backupXml);
+            Assert.Contains("<Title>Intro Book</Title>", backupXml);
+            Assert.Contains("<PageCount>3</PageCount>", backupXml);
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+            if (File.Exists(existingBak)) File.Delete(existingBak);
+        }
+    }
 }

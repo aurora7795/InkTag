@@ -17,6 +17,35 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #30]: Page-Strip Provenance & Non-Clobbering Backup Verification
+* **Branch / Commit:** `fix/issue-30-page-strip-backup-provenance`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`ComicArchiveHandler.cs`, `MetadataBackupService.cs`, Page Stripping)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that stripping pages from an archive creates a listable backup entry in `backups_manifest.json` and does not delete or overwrite pre-existing `.bak` files on disk.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Setup Pre-Existing Backup):**
+  1. Have or create a multi-page test CBZ (e.g. `test_comic.cbz`).
+  2. Create a dummy file `test_comic.cbz.bak` with known text (e.g. `Precious user backup`).
+- [ ] **Step 2 (Execute Page Stripping):**
+  1. Strip page index 0 using the CLI or MCP tool:
+     ```bash
+     dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- strip-intro test_comic.cbz --page 0
+     ```
+  2. Confirm command completes successfully.
+- [ ] **Step 3 (Verify Non-Clobbering and Backup Entry):**
+  1. Inspect `test_comic.cbz.bak`:
+     Verify file exists and its content is still `Precious user backup` (not overwritten or deleted).
+  2. Run list backups tool or inspect `~/.local/share/InkTag/backups/backups_manifest.json` (or OS equivalent):
+     Verify an entry exists for `test_comic.cbz` with `OperationType: "RemoveArchivePages"` and change reason describing removed page.
+
+* **Expected Result:** Page removal succeeds, user `.bak` file remains untouched, and metadata backup snapshot is recorded.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #37]: Warn on Unencrypted HTTP Komga Server URLs
 * **Branch / Commit:** `fix/issue-37-komga-plaintext-http-warning`
 * **Date Added:** 2026-11-19

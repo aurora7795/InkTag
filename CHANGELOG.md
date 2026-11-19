@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Restrict File Permissions on Settings**: `AppSettingsService.SaveSettings` now enforces POSIX permissions `0600` (`UserRead | UserWrite`) on `settings.json` and `0700` (`UserRead | UserWrite | UserExecute`) on the containing configuration directory on Linux and macOS, preventing local multi-user exposure of stored ComicVine and Komga credentials. Resolves [#32](https://github.com/aurora7795/InkTag/issues/32).
 
 ### Fixed
+- **Page Stripping Provenance & Non-Clobbering Backups**: `ComicArchiveHandler.RemoveArchivePages` now captures pre-mutation metadata snapshots in `MetadataBackupService` before swapping files and uses unique GUID-suffixed temporary backup filenames (`.orig.bak.<guid>`), eliminating risk of deleting or overwriting pre-existing user `.bak` files on disk. Resolves [#30](https://github.com/aurora7795/InkTag/issues/30).
 - **Windows Reserved Filename Sanitization**: `ComicFileRenamer.SanitizeFilename` now escapes Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, `CLOCK$`) with an underscore prefix (e.g. `_CON.cbz`) and trims trailing periods and whitespace, preventing runtime I/O exceptions on Windows and SMB storage mounts. Resolves [#35](https://github.com/aurora7795/InkTag/issues/35).
 
 

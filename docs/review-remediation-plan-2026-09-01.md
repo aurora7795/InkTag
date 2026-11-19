@@ -183,13 +183,13 @@ default `fill-missing` behaviour is unchanged.
       existing suite stays green.
 
 ### P4-B · L3 — Page-strip provenance & backup naming
-- [ ] In `RemoveArchivePages`: read the existing `ComicInfo.xml` and call
+- [x] In `RemoveArchivePages`: read the existing `ComicInfo.xml` and call
       `MetadataBackupService.CreateBackup(filePath, originalXml, "RemoveArchivePages", ...)` before
-      mutating.
-- [ ] Replace the fixed `filePath + ".bak"` with a GUID-suffixed name (as `EditMetadata` already
-      does); stop deleting a pre-existing user file that happens to match the `.bak` name.
-- [ ] Test (`BatchRollbackAndProvenanceTests` style): `StripFirstPage` creates a listable backup
-      entry.
+      mutating. (Fixed in #30).
+- [x] Replace the fixed `filePath + ".bak"` with a GUID-suffixed name (as `EditMetadata` already
+      does); stop deleting a pre-existing user file that happens to match the `.bak` name. (Fixed in #30).
+- [x] Test (`BatchRollbackAndProvenanceTests` style): `StripFirstPage` creates a listable backup
+      entry. (Fixed in #30).
 
 ---
 
@@ -338,3 +338,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L6 resolved (#37): emitted warning on unencrypted HTTP Komga server URLs before transmitting credentials. |
 | 2026-11-19 | M1 resolved (#34): corrected `LruImageCache` XML docstrings to accurately document reference-dropping bounded cache architecture and evaluated unmanaged GC reclamation. |
 | 2026-11-19 | L4 resolved (#36): extracted franchise-specific series title expansions into `SeriesAliasResolver`. |
+| 2026-11-19 | L3 resolved (#30): captured pre-mutation metadata backup provenance and non-clobbering GUID swap backups during page stripping. |
