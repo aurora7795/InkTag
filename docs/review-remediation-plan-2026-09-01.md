@@ -298,7 +298,7 @@ Tracked against `aurora7795/InkTag`:
   wording.)
 - [**#22**](https://github.com/aurora7795/InkTag/issues/22) — **L8 · CLI arg-parser migration.**
   Move `src/InkTag.Cli/Program.cs` to `System.CommandLine`; removes ~800 lines and adds
-  `--opt=value` support. Keep the `--json` output contract byte-identical.
+  `--opt=value` support. Keep the `--json` output contract byte-identical. (Resolved in #22).
 - [**#29**](https://github.com/aurora7795/InkTag/issues/29) — **M2 · Archive repack nested directory integrity.**
   Preserve relative directory hierarchies with `ExtractFullPath = true` and recursive enumeration in `RemoveArchivePages`.
 - [**#30**](https://github.com/aurora7795/InkTag/issues/30) — **L3 · Page-strip provenance & non-clobbering backup naming.**
@@ -342,3 +342,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | M8 resolved (#31): introduced `AtomicFile` atomic write-replace pattern across settings, manifests, and cache, with corrupt file diagnostic warnings. |
 | 2026-11-19 | L2 resolved (#19): held persistent open `StreamWriter` with in-memory size tracking in `AppLogger` to eliminate per-line stat and open I/O lock contention. |
 | 2026-11-19 | M5 resolved (#33): added `BulkScrapeOptions.DiscardCoverBytesAfterHash` and updated visual match ViewModel binding to release raw cover byte buffers post-hash computation. |
+| 2026-11-19 | L8 resolved (#22): migrated `InkTag.Cli` to `System.CommandLine`, adding `--option=value` support, typed argument binding, and comprehensive CLI integration tests. |

@@ -17,6 +17,34 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #22]: CLI System.CommandLine Migration Verification
+* **Branch / Commit:** `refactor/issue-22-system-commandline`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Cli` (`CliApp.cs`, `Program.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that CLI commands support both `--option value` and standard `--option=value` syntax, while returning identical JSON payloads with `--json`.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `--opt=value` parsing):**
+  1. Open terminal and run:
+     ```bash
+     dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- scan . --missing="Writer,Series" --json
+     ```
+  2. Verify output is clean, formatted JSON with `"success": true` and `"directory": "."`.
+- [ ] **Step 2 (Verify Legacy Direct Path Invocation):**
+  1. Create or point to a test comic file (e.g. `test.cbz`).
+  2. Run direct path without `read`:
+     ```bash
+     dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- test.cbz --json
+     ```
+  3. Verify output returns valid ComicInfo JSON metadata payload without parsing errors.
+
+* **Expected Result:** Both `--option value` and `--option=value` work seamlessly, and JSON outputs match machine-readable contracts.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #33]: Bulk Scrape Memory Optimization & Cover Discard Verification
 * **Branch / Commit:** `perf/issue-33-bulk-scrape-release-cover-bytes`
 * **Date Added:** 2026-11-19
