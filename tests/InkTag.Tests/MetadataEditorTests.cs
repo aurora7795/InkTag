@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using InkTag.Core;
+using InkTag.Core.Exceptions;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Zip;
@@ -241,15 +242,16 @@ public class MetadataEditorTests
                 writer.Write("../evil.txt", tempContentFile);
             }
 
-            // EditMetadata uses ExtractFullPath = false, so the file extracts as evil.txt within tempDir
-            // and post-extraction validation ensures no file escapes tempDir.
-            editor.EditMetadata(tempCbz, comic =>
+            // EditMetadata rejects entries with path traversal, throwing UnsafeArchiveEntryException
+            var ex = Assert.Throws<UnsafeArchiveEntryException>(() =>
             {
-                comic.Title = "Sanitized Title";
+                editor.EditMetadata(tempCbz, comic =>
+                {
+                    comic.Title = "Sanitized Title";
+                });
             });
 
-            var readComic = editor.ReadMetadata(tempCbz);
-            Assert.Equal("Sanitized Title", readComic.Title);
+            Assert.Equal("../evil.txt", ex.EntryName);
         }
         finally
         {

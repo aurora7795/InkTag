@@ -9,7 +9,9 @@ using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Zip;
 using InkTag.Core.Backup;
+using InkTag.Core.Exceptions;
 using InkTag.Core.Images;
+using InkTag.Core.IO;
 using InkTag.Core.Logging;
 using InkTag.Core.Parsing;
 
@@ -472,34 +474,32 @@ internal static class ComicArchiveHandler
 
         try
         {
-            // 1. Extract archive entries safely
+            // 1. Extract archive entries safely while preserving directory hierarchies
             using (Stream stream = File.OpenRead(filePath))
             using (var archive = ArchiveFactory.OpenArchive(stream))
             {
                 foreach (var entry in archive.Entries)
                 {
+                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
+                    {
+                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
+                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
+                    }
+
                     if (!entry.IsDirectory)
                     {
-                        entry.WriteToDirectory(tempDir, new SharpCompress.Common.ExtractionOptions { Overwrite = true, ExtractFullPath = false });
+                        entry.WriteToDirectory(tempDir, new SharpCompress.Common.ExtractionOptions { Overwrite = true, ExtractFullPath = true });
                     }
                 }
             }
 
             // Zip-Slip defense
-            string canonicalTempDir = Path.GetFullPath(tempDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            foreach (string extractedFile in Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories))
-            {
-                string canonicalFile = Path.GetFullPath(extractedFile);
-                if (!canonicalFile.StartsWith(canonicalTempDir, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException($"Archive entry '{extractedFile}' escapes extraction target directory.");
-                }
-            }
+            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
 
-            // 2. Identify sorted image files
-            var imageFiles = Directory.GetFiles(tempDir, "*.*", SearchOption.TopDirectoryOnly)
+            // 2. Identify sorted image files (including nested subdirectories)
+            var imageFiles = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
                 .Where(f => IsImageFileName(f) && !IsIgnoredSystemEntry(f))
-                .OrderBy(f => Path.GetFileName(f), NaturalStringComparer.OrdinalIgnoreCase)
+                .OrderBy(f => Path.GetRelativePath(tempDir, f).Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             result.OriginalPageCount = imageFiles.Count;
@@ -524,38 +524,54 @@ internal static class ComicArchiveHandler
                 if (validIndicesToRemove.Contains(i))
                 {
                     string fileToDelete = imageFiles[i];
-                    string fileName = Path.GetFileName(fileToDelete);
+                    string relativePath = Path.GetRelativePath(tempDir, fileToDelete).Replace('\\', '/');
                     try
                     {
                         File.Delete(fileToDelete);
-                        result.RemovedEntries.Add(fileName);
+                        result.RemovedEntries.Add(relativePath);
                         result.RemovedCount++;
                     }
                     catch (Exception ex)
                     {
-                        AppLogger.LogWarning($"Failed to delete entry '{fileName}': {ex.Message}");
+                        AppLogger.LogWarning($"Failed to delete entry '{relativePath}': {ex.Message}");
                     }
                 }
             }
 
             result.FinalPageCount = result.OriginalPageCount - result.RemovedCount;
 
-            // 3. Update ComicInfo.xml if present
+            // 3. Update ComicInfo.xml if present (recursively discovered)
+            string? existingXmlFile = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
+                .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
+
             string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
             ComicInfo comicInfo;
             string? originalXmlContent = null;
 
-            if (File.Exists(xmlPath))
+            if (existingXmlFile != null && File.Exists(existingXmlFile))
             {
                 try
                 {
-                    originalXmlContent = File.ReadAllText(xmlPath);
+                    originalXmlContent = File.ReadAllText(existingXmlFile);
                     comicInfo = ComicInfoXmlSanitizer.DeserializeComicInfo(originalXmlContent);
                 }
                 catch (Exception ex)
                 {
                     AppLogger.LogWarning($"Failed to parse ComicInfo.xml during page removal: {ex.Message}. Initializing fresh metadata.");
                     comicInfo = new ComicInfo();
+                }
+
+                // If existing XML was in a subfolder, remove it so clean root ComicInfo.xml is written
+                if (!existingXmlFile.Equals(xmlPath, StringComparison.Ordinal))
+                {
+                    try
+                    {
+                        File.Delete(existingXmlFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogDebug($"Failed to clean up legacy ComicInfo.xml at '{existingXmlFile}': {ex.Message}");
+                    }
                 }
             }
             else

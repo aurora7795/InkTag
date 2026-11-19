@@ -17,6 +17,36 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #29]: Nested Directory Preservation & Safe Repackaging Verification
+* **Branch / Commit:** `fix/issue-29-archive-repack-structure`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`ArchiveSwapService.cs`, `ComicArchiveHandler.cs`, `ArchiveSecurity.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that modifying metadata or removing pages from a CBZ archive containing nested subdirectories (e.g. `Chapter 1/01.jpg`) preserves directory structure without flattening files to root or losing pages.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Metadata Edit Preserves Folders):**
+  1. Create a test CBZ containing subdirectories (e.g. `Chapter 1/01.jpg`, `Chapter 2/01.jpg`).
+  2. Run metadata edit via CLI:
+     ```bash
+     dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- read test_nested.cbz --set-title="Preserved Folders"
+     ```
+  3. Inspect the contents of `test_nested.cbz` using an archive utility or `unzip -l test_nested.cbz`.
+  4. Verify that `Chapter 1/01.jpg` and `Chapter 2/01.jpg` remain in their respective subdirectories and are not flattened to root.
+- [ ] **Step 2 (Verify Page Removal in Foldered Archive):**
+  1. Run page removal on the foldered archive via CLI:
+     ```bash
+     dotnet run --project src/InkTag.Cli/InkTag.Cli.csproj -- remove-page test_nested.cbz 0
+     ```
+  2. Inspect the archive with `unzip -l test_nested.cbz`.
+  3. Verify that only page 0 (`Chapter 1/01.jpg`) was removed, and remaining pages in `Chapter 2/` remain intact in their subdirectories.
+
+* **Expected Result:** Nested directory structures are preserved throughout extraction and repacking cycles, and page removal accurately removes targeted pages across subdirectories.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #20]: Append-Oriented Backup Journal Verification
 * **Branch / Commit:** `perf/issue-20-backup-manifest-journal`
 * **Date Added:** 2026-11-19

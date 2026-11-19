@@ -28,7 +28,7 @@ the same branch, and open a GitHub issue for every deferred item.
 | H2 | High | MCP server logs to **stdout**, corrupting the JSON-RPC stdio stream — ✅ **fixed in Phase 1** | `src/InkTag.Core/Logging/AppLogger.cs:108`, `src/InkTag.Mcp/Program.cs:31` |
 | H3 | High | `HttpClient` created per candidate in the scrape hot path → socket exhaustion — ✅ **fixed in Phase 2** | `src/InkTag.Core/Scrapers/MetadataScraperService.cs:189`, `RateLimitedHttpClient.cs:22` |
 | M1 | Med | `LruImageCache` docstring claims it disposes evicted bitmaps; it does not — and disposal was **deliberately removed in v0.13.0** ("Prevent Premature Bitmap Disposal During Cache Eviction") because it crashed layout passes. Scope is now docstring accuracy + a safe leak fix, not re-adding disposal. | `src/InkTag.Gui/Services/LruImageCache.cs:57` |
-| M2 | Med | Archive repack flattens folders + `Overwrite=true` → silent page loss | `src/InkTag.Core/ArchiveSwapService.cs:70`, `ComicArchiveHandler.cs:482` |
+| M2 | Med | Archive repack flattens folders + `Overwrite=true` → silent page loss — ✅ **fixed in Phase 4 (#29)** | `src/InkTag.Core/ArchiveSwapService.cs:70`, `ComicArchiveHandler.cs:482` |
 | M3 | Med | Scraper disk cache never persists for one-shot CLI/MCP runs (2s debounce, no dispose) — ✅ **fixed in Phase 2** | `src/InkTag.Core/Scrapers/ScraperCacheService.cs:80`, `MetadataScraperService.cs:32` |
 | M4 | Med | Scrape applies metadata twice with two different merge modes — ✅ **fixed in Phase 3** | `src/InkTag.Mcp/ComicTools.cs:318`, `MetadataScraperService.cs:265` |
 | M5 | Med | Bulk scrape retains every cover image in memory for the whole run | `src/InkTag.Core/Scrapers/BulkScrapeQueueService.cs:38` |
@@ -170,15 +170,15 @@ default `fill-missing` behaviour is unchanged.
 **Branch:** `fix/archive-repack-structure` — M2 + L3. Highest regression risk; budget for new fixtures.
 
 ### P4-A · M2 — Preserve archive structure
-- [ ] `ArchiveSwapService.cs:70` and `ComicArchiveHandler.cs:482`: `ExtractFullPath = false` →
+- [x] `ArchiveSwapService.cs:70` and `ComicArchiveHandler.cs:482`: `ExtractFullPath = false` →
       `true` (keep `Overwrite = true`).
-- [ ] **Ripple:** `ComicArchiveHandler.RemoveArchivePages` (~line 499) enumerates images with
+- [x] **Ripple:** `ComicArchiveHandler.RemoveArchivePages` (~line 499) enumerates images with
       `SearchOption.TopDirectoryOnly` and looks for `ComicInfo.xml` only at the temp-dir root —
       make both recursive so nested archives are not silently emptied. Align with
       `EditMetadata`'s existing recursive handling.
-- [ ] Keep the post-extraction zip-slip check; add a per-entry `..` / rooted-path check before
+- [x] Keep the post-extraction zip-slip check; add a per-entry `..` / rooted-path check before
       extraction.
-- [ ] Tests: nested-folder CBZ fixtures — `EditMetadata` round-trip preserves entry structure and
+- [x] Tests: nested-folder CBZ fixtures — `EditMetadata` round-trip preserves entry structure and
       page count; `RemoveArchivePages` on a foldered archive removes exactly one page. The full
       existing suite stays green.
 
@@ -299,8 +299,8 @@ Tracked against `aurora7795/InkTag`:
 - [**#22**](https://github.com/aurora7795/InkTag/issues/22) — **L8 · CLI arg-parser migration.**
   Move `src/InkTag.Cli/Program.cs` to `System.CommandLine`; removes ~800 lines and adds
   `--opt=value` support. Keep the `--json` output contract byte-identical. (Resolved in #22).
-- [**#29**](https://github.com/aurora7795/InkTag/issues/29) — **M2 · Archive repack nested directory integrity.**
-  Preserve relative directory hierarchies with `ExtractFullPath = true` and recursive enumeration in `RemoveArchivePages`.
+- [x] [**#29**](https://github.com/aurora7795/InkTag/issues/29) — **M2 · Archive repack nested directory integrity.**
+  Preserve relative directory hierarchies with `ExtractFullPath = true` and recursive enumeration in `RemoveArchivePages`. (Resolved in #29).
 - [**#30**](https://github.com/aurora7795/InkTag/issues/30) — **L3 · Page-strip provenance & non-clobbering backup naming.**
   Capture pre-write snapshot and use GUID-suffixed backup filenames during page removal.
 - [**#31**](https://github.com/aurora7795/InkTag/issues/31) — **M8 · Atomic file write-replace pattern.**
@@ -346,3 +346,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-11-19 | L5 resolved (#39): introduced `InkTagVersion.Current` for dynamic assembly version resolution in ComicVineProvider tagging notes. |
 | 2026-11-19 | L9 resolved (#40): guarded `PerceptualHashService.ComputeDHash` against decompression bombs by inspecting codec dimensions before full bitmap decode. |
 | 2026-11-19 | L1 resolved (#20): introduced append-oriented journal in MetadataBackupService to eliminate O(n) manifest rewrites during bulk tagging. |
+| 2026-11-19 | M2 resolved (#29): preserved nested directory structure in ArchiveSwapService and ComicArchiveHandler, with recursive image/XML enumeration and pre-extraction zip-slip checks. |

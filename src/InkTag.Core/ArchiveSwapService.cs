@@ -9,6 +9,7 @@ using SharpCompress.Common;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Zip;
 using InkTag.Core.Exceptions;
+using InkTag.Core.IO;
 using InkTag.Core.Logging;
 
 namespace InkTag.Core;
@@ -58,31 +59,28 @@ internal static class ArchiveSwapService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 1. Extract the archive contents safely
+            // 1. Extract the archive contents safely while preserving directory hierarchies
             using (Stream stream = File.OpenRead(filePath))
             using (var archive = ArchiveFactory.OpenArchive(stream))
             {
                 foreach (var entry in archive.Entries)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
+                    {
+                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
+                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
+                    }
+
                     if (!entry.IsDirectory)
                     {
-                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = false });
+                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
                     }
                 }
             }
 
             // Verify all extracted files remain strictly contained within tempDir (Zip-Slip defense)
-            string canonicalTempDir = Path.GetFullPath(tempDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            foreach (string extractedFile in Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories))
-            {
-                string canonicalFile = Path.GetFullPath(extractedFile);
-                if (!canonicalFile.StartsWith(canonicalTempDir, StringComparison.OrdinalIgnoreCase))
-                {
-                    var unsafeEx = new InvalidDataException($"Archive entry '{extractedFile}' escapes extraction target directory.");
-                    throw new UnsafeArchiveEntryException(unsafeEx.Message, extractedFile, filePath, unsafeEx);
-                }
-            }
+            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
 
             // 2. Find and deserialize / create ComicInfo.xml
             string? existingXmlFile = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
@@ -317,12 +315,20 @@ internal static class ArchiveSwapService
                 foreach (var entry in archive.Entries)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
+                    {
+                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
+                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
+                    }
+
                     if (!entry.IsDirectory)
                     {
-                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = false });
+                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
                     }
                 }
             }
+
+            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
 
             if (createBackup)
             {
@@ -338,6 +344,13 @@ internal static class ArchiveSwapService
                 {
                     AppLogger.LogWarning($"Pre-write backup failed during UpdateMetadataXml for '{filePath}': {ex.Message}");
                 }
+            }
+
+            string? existingXmlToClean = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
+                .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));
+            if (existingXmlToClean != null && !existingXmlToClean.Equals(Path.Combine(tempDir, "ComicInfo.xml"), StringComparison.Ordinal))
+            {
+                try { File.Delete(existingXmlToClean); } catch { }
             }
 
             string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
