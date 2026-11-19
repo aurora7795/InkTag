@@ -155,6 +155,8 @@ public partial class ComicItemViewModel : ObservableValidator
     public bool IsUntagged => !HasEmbeddedXml || !HasEssentialMetadata;
     public bool HasEssentialMetadata => !string.IsNullOrWhiteSpace(Series) || !string.IsNullOrWhiteSpace(Title);
 
+    public string StatusBadgeText => HasReadError ? "ERROR" : IsUntagged ? "UNTAGGED" : IsDirty ? "MODIFIED" : "TAGGED";
+
     public ComicItemViewModel(string filePath, ComicInfo model, bool hasEmbeddedXml = true)
     {
         FilePath = filePath;

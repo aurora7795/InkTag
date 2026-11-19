@@ -21,7 +21,14 @@ public enum ComicFilterMode
 {
     All,
     Untagged,
-    Modified
+    Modified,
+    Errors
+}
+
+public enum MainWindowViewMode
+{
+    Overview,
+    Spreadsheet
 }
 
 public partial class MainWindowViewModel : ViewModelBase
@@ -48,9 +55,27 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasSelectedDirectory => !string.IsNullOrWhiteSpace(SelectedDirectory);
 
+    public string SelectedDirectoryFolderName
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SelectedDirectory)) return "No library opened";
+            try
+            {
+                var dir = new DirectoryInfo(SelectedDirectory);
+                return string.IsNullOrEmpty(dir.Name) ? SelectedDirectory : dir.Name;
+            }
+            catch
+            {
+                return SelectedDirectory;
+            }
+        }
+    }
+
     partial void OnSelectedDirectoryChanged(string value)
     {
         OnPropertyChanged(nameof(HasSelectedDirectory));
+        OnPropertyChanged(nameof(SelectedDirectoryFolderName));
     }
 
     [ObservableProperty]
@@ -58,6 +83,30 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isInspectorVisible = true;
+
+    [ObservableProperty]
+    private bool _isRailVisible = true;
+
+    [ObservableProperty]
+    private MainWindowViewMode _activeViewMode = MainWindowViewMode.Overview;
+
+    public bool IsOverviewView => ActiveViewMode == MainWindowViewMode.Overview;
+    public bool IsSpreadsheetView => ActiveViewMode == MainWindowViewMode.Spreadsheet;
+
+    partial void OnActiveViewModeChanged(MainWindowViewMode value)
+    {
+        OnPropertyChanged(nameof(IsOverviewView));
+        OnPropertyChanged(nameof(IsSpreadsheetView));
+    }
+
+    [RelayCommand]
+    public void ShowOverviewView() => ActiveViewMode = MainWindowViewMode.Overview;
+
+    [RelayCommand]
+    public void ShowSpreadsheetView() => ActiveViewMode = MainWindowViewMode.Spreadsheet;
+
+    [RelayCommand]
+    public void ToggleRail() => IsRailVisible = !IsRailVisible;
 
     [ObservableProperty]
     private InkTag.Core.Configuration.AppThemeMode _currentThemeMode = InkTag.Core.Configuration.AppThemeMode.System;
@@ -108,14 +157,24 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _filterStatusText = "Ready";
 
     [ObservableProperty]
+    private int _taggedCount;
+
+    [ObservableProperty]
     private int _untaggedCount;
 
     [ObservableProperty]
     private int _modifiedCount;
 
+    [ObservableProperty]
+    private int _readErrorCount;
+
+    [ObservableProperty]
+    private int _taggedPercentage;
+
     public string AllFilterLabel => $"All ({Comics.Count})";
     public string UntaggedFilterLabel => $"Untagged ({UntaggedCount})";
     public string ModifiedFilterLabel => $"Modified ({ModifiedCount})";
+    public string ErrorsFilterLabel => $"Errors ({ReadErrorCount})";
 
     public bool IsFilterAll
     {
@@ -135,11 +194,18 @@ public partial class MainWindowViewModel : ViewModelBase
         set { if (value) FilterMode = ComicFilterMode.Modified; }
     }
 
+    public bool IsFilterErrors
+    {
+        get => FilterMode == ComicFilterMode.Errors;
+        set { if (value) FilterMode = ComicFilterMode.Errors; }
+    }
+
     partial void OnFilterModeChanged(ComicFilterMode value)
     {
         OnPropertyChanged(nameof(IsFilterAll));
         OnPropertyChanged(nameof(IsFilterUntagged));
         OnPropertyChanged(nameof(IsFilterModified));
+        OnPropertyChanged(nameof(IsFilterErrors));
         ApplyFilter();
     }
 
@@ -247,21 +313,316 @@ public partial class MainWindowViewModel : ViewModelBase
     // Callback invoked when CBR files are about to be saved and require user confirmation
     public Func<IEnumerable<string>, Task<(bool Proceed, bool DoNotAskAgain)>>? ConfirmCbrConversionRequested;
 
+    // Navigation Rail Collections & Filter State
+    public ObservableCollection<NavRailGroupViewModel> PublisherGroups { get; } = new();
+    public ObservableCollection<NavRailGroupViewModel> SeriesGroups { get; } = new();
+
+    [ObservableProperty]
+    private string? _selectedPublisherFilter;
+
+    [ObservableProperty]
+    private string? _selectedSeriesFilter;
+
+    [ObservableProperty]
+    private bool _hasActiveRailFilter;
+
+    [ObservableProperty]
+    private string _activeRailFilterDescription = string.Empty;
+
+    // Health Dashboard Data
+    public ObservableCollection<ComicItemViewModel> NeedsAttentionItems { get; } = new();
+
+    [ObservableProperty]
+    private int _needsAttentionTotalCount;
+
+    // Last Batch Job & Rollback State
+    [ObservableProperty]
+    private InkTag.Core.Backup.BatchJobSummary? _lastBatchJob;
+
+    [ObservableProperty]
+    private bool _hasLastBatchJob;
+
+    [ObservableProperty]
+    private string _lastBatchJobSummaryText = "No recent batch jobs recorded";
+
+    [ObservableProperty]
+    private string _lastBatchJobDetailsText = "Tagging and bulk edits create automatic restore points with instant rollback.";
+
+    [ObservableProperty]
+    private string _lastBatchJobRollbackStatusText = string.Empty;
+
+    // Dashboard Quick Action Events
+    public event Action? RequestOpenBulkScrapeQueue;
+    public event Action? RequestOpenRenameFiles;
+
+    [RelayCommand]
+    public void TriggerBulkAutoTag() => RequestOpenBulkScrapeQueue?.Invoke();
+
+    [RelayCommand]
+    public void TriggerBulkRename() => RequestOpenRenameFiles?.Invoke();
+
     public MainWindowViewModel()
     {
         Comics.CollectionChanged += OnComicsCollectionChanged;
         BulkEditRules.Add(new BulkEditRuleViewModel());
         RefreshThemeFromSettings();
+        RefreshLastBatchJob();
     }
 
     public void UpdateCounts()
     {
-        UntaggedCount = Comics.Count(c => c.IsUntagged);
-        ModifiedCount = Comics.Count(c => c.IsDirty);
+        TaggedCount = Comics.Count(c => !c.IsUntagged && !c.HasReadError);
+        UntaggedCount = Comics.Count(c => c.IsUntagged && !c.HasReadError);
+        ModifiedCount = Comics.Count(c => c.IsDirty && !c.HasReadError);
+        ReadErrorCount = Comics.Count(c => c.HasReadError);
+        TaggedPercentage = Comics.Count > 0 ? (int)Math.Round((double)TaggedCount / Comics.Count * 100.0) : 0;
+
         OnPropertyChanged(nameof(AllFilterLabel));
         OnPropertyChanged(nameof(UntaggedFilterLabel));
         OnPropertyChanged(nameof(ModifiedFilterLabel));
+        OnPropertyChanged(nameof(ErrorsFilterLabel));
+
+        UpdateNavRailGroups();
+        UpdateNeedsAttentionItems();
         UpdateFilterStatus();
+    }
+
+    public void UpdateNavRailGroups()
+    {
+        var currentPub = SelectedPublisherFilter;
+        var currentSer = SelectedSeriesFilter;
+
+        var publishers = Comics
+            .Where(c => !string.IsNullOrWhiteSpace(c.Publisher))
+            .GroupBy(c => c.Publisher!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key)
+            .Select(g => new NavRailGroupViewModel(g.Key, g.Count(), g.Key)
+            {
+                IsSelected = string.Equals(g.Key, currentPub, StringComparison.OrdinalIgnoreCase)
+            })
+            .ToList();
+
+        var series = Comics
+            .Where(c => !string.IsNullOrWhiteSpace(c.Series))
+            .GroupBy(c => c.Series!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key)
+            .Select(g => new NavRailGroupViewModel(g.Key, g.Count(), g.Key)
+            {
+                IsSelected = string.Equals(g.Key, currentSer, StringComparison.OrdinalIgnoreCase)
+            })
+            .ToList();
+
+        PublisherGroups.Clear();
+        foreach (var p in publishers) PublisherGroups.Add(p);
+
+        SeriesGroups.Clear();
+        foreach (var s in series) SeriesGroups.Add(s);
+    }
+
+    private void UpdateNeedsAttentionItems()
+    {
+        var attention = Comics
+            .Where(c => c.HasReadError || c.IsUntagged || c.IsDirty)
+            .OrderByDescending(c => c.HasReadError)
+            .ThenByDescending(c => c.IsUntagged)
+            .ThenByDescending(c => c.IsDirty)
+            .ToList();
+
+        NeedsAttentionTotalCount = attention.Count;
+
+        NeedsAttentionItems.Clear();
+        foreach (var item in attention.Take(30))
+        {
+            NeedsAttentionItems.Add(item);
+        }
+    }
+
+    [RelayCommand]
+    public void InspectComic(ComicItemViewModel? comic)
+    {
+        if (comic == null) return;
+        ActiveComic = comic;
+        IsInspectorVisible = true;
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void ViewAllNeedsAttention()
+    {
+        FilterMode = ComicFilterMode.Untagged;
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void FilterByPublisher(string? publisher)
+    {
+        SelectedPublisherFilter = publisher;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        ApplyFilter();
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void FilterBySeries(string? series)
+    {
+        SelectedSeriesFilter = series;
+        SelectedPublisherFilter = null;
+        UpdateRailFilterStatus();
+        ApplyFilter();
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void ClearRailFilter()
+    {
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        ApplyFilter();
+    }
+
+    private void UpdateRailFilterStatus()
+    {
+        if (!string.IsNullOrEmpty(SelectedSeriesFilter))
+        {
+            HasActiveRailFilter = true;
+            ActiveRailFilterDescription = $"Series: {SelectedSeriesFilter}";
+        }
+        else if (!string.IsNullOrEmpty(SelectedPublisherFilter))
+        {
+            HasActiveRailFilter = true;
+            ActiveRailFilterDescription = $"Publisher: {SelectedPublisherFilter}";
+        }
+        else
+        {
+            HasActiveRailFilter = false;
+            ActiveRailFilterDescription = string.Empty;
+        }
+
+        foreach (var p in PublisherGroups)
+        {
+            p.IsSelected = string.Equals(p.Key, SelectedPublisherFilter, StringComparison.OrdinalIgnoreCase);
+        }
+        foreach (var s in SeriesGroups)
+        {
+            s.IsSelected = string.Equals(s.Key, SelectedSeriesFilter, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [RelayCommand]
+    public void SelectSmartListAll()
+    {
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        FilterMode = ComicFilterMode.All;
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void SelectSmartListUntagged()
+    {
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        FilterMode = ComicFilterMode.Untagged;
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void SelectSmartListModified()
+    {
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        FilterMode = ComicFilterMode.Modified;
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    [RelayCommand]
+    public void SelectSmartListErrors()
+    {
+        SelectedPublisherFilter = null;
+        SelectedSeriesFilter = null;
+        UpdateRailFilterStatus();
+        FilterMode = ComicFilterMode.Errors;
+        ActiveViewMode = MainWindowViewMode.Spreadsheet;
+    }
+
+    public void RefreshLastBatchJob()
+    {
+        try
+        {
+            var backupService = new InkTag.Core.Backup.MetadataBackupService();
+            var batchJobs = backupService.ListBatchJobs(1);
+            if (batchJobs.Count > 0)
+            {
+                LastBatchJob = batchJobs[0];
+                HasLastBatchJob = true;
+                LastBatchJobSummaryText = LastBatchJob.BatchJobId;
+
+                string timeStr = LastBatchJob.Timestamp;
+                if (DateTime.TryParse(LastBatchJob.Timestamp, out var dt))
+                {
+                    timeStr = dt.ToLocalTime().ToString("g");
+                }
+                LastBatchJobDetailsText = $"{LastBatchJob.OperationType} • {LastBatchJob.TotalBackups} file(s) affected • {timeStr}";
+            }
+            else
+            {
+                LastBatchJob = null;
+                HasLastBatchJob = false;
+                LastBatchJobSummaryText = "No recent batch jobs recorded";
+                LastBatchJobDetailsText = "Tagging and bulk edits create automatic restore points with instant rollback.";
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.LogDebug($"[MainWindowViewModel] RefreshLastBatchJob failed: {ex.Message}");
+            LastBatchJob = null;
+            HasLastBatchJob = false;
+            LastBatchJobSummaryText = "No recent batch jobs recorded";
+            LastBatchJobDetailsText = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    public async Task RollbackLastBatchAsync()
+    {
+        if (LastBatchJob == null) return;
+
+        try
+        {
+            ProgressText = $"Rolling back batch '{LastBatchJob.BatchJobId}'...";
+            var backupService = new InkTag.Core.Backup.MetadataBackupService();
+            var report = backupService.RestoreBatchJob(LastBatchJob.BatchJobId);
+
+            if (report.Failed == 0)
+            {
+                LastBatchJobRollbackStatusText = $"Successfully rolled back {report.Restored} file(s)!";
+                ProgressText = $"Rollback complete: {report.Restored} file(s) restored.";
+            }
+            else
+            {
+                LastBatchJobRollbackStatusText = $"Rollback reported {report.Failed} failure(s).";
+                ProgressText = $"Rollback finished with {report.Failed} failures.";
+            }
+
+            if (HasSelectedDirectory && Directory.Exists(SelectedDirectory))
+            {
+                await LoadDirectoryAsync();
+            }
+            RefreshLastBatchJob();
+        }
+        catch (Exception ex)
+        {
+            LastBatchJobRollbackStatusText = $"Rollback failed: {ex.Message}";
+            ProgressText = $"Rollback failed: {ex.Message}";
+        }
     }
 
     public void ApplyFilter()
@@ -274,6 +635,22 @@ public partial class MainWindowViewModel : ViewModelBase
                 return false;
             }
             if (FilterMode == ComicFilterMode.Modified && !comic.IsDirty && comic != ActiveComic)
+            {
+                return false;
+            }
+            if (FilterMode == ComicFilterMode.Errors && !comic.HasReadError && comic != ActiveComic)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(SelectedSeriesFilter) &&
+                !string.Equals(comic.Series, SelectedSeriesFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(SelectedPublisherFilter) &&
+                !string.Equals(comic.Publisher, SelectedPublisherFilter, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -313,13 +690,21 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (FilterMode == ComicFilterMode.Untagged)
+        if (HasActiveRailFilter)
+        {
+            FilterStatusText = $"Showing {DisplayedComics.Count} of {Comics.Count} ({ActiveRailFilterDescription})";
+        }
+        else if (FilterMode == ComicFilterMode.Untagged)
         {
             FilterStatusText = $"Showing {DisplayedComics.Count} untagged of {Comics.Count} comics";
         }
         else if (FilterMode == ComicFilterMode.Modified)
         {
             FilterStatusText = $"Showing {DisplayedComics.Count} modified of {Comics.Count} comics";
+        }
+        else if (FilterMode == ComicFilterMode.Errors)
+        {
+            FilterStatusText = $"Showing {DisplayedComics.Count} errors of {Comics.Count} comics";
         }
         else
         {
@@ -354,13 +739,15 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (e.PropertyName == nameof(ComicItemViewModel.IsDirty) || 
             e.PropertyName == nameof(ComicItemViewModel.HasErrors) ||
+            e.PropertyName == nameof(ComicItemViewModel.HasReadError) ||
             e.PropertyName == nameof(ComicItemViewModel.IsUntagged) ||
             e.PropertyName == nameof(ComicItemViewModel.Title) ||
-            e.PropertyName == nameof(ComicItemViewModel.Series))
+            e.PropertyName == nameof(ComicItemViewModel.Series) ||
+            e.PropertyName == nameof(ComicItemViewModel.Publisher))
         {
             UpdateCounts();
             OnPropertyChanged(nameof(CanSave));
-            if (FilterMode != ComicFilterMode.All)
+            if (FilterMode != ComicFilterMode.All || HasActiveRailFilter)
             {
                 ApplyFilter();
             }

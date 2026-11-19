@@ -15,9 +15,18 @@ public partial class MainWindow : Window
     private const double DefaultInspectorWidth = 360;
     private GridLength _savedInspectorWidth = new GridLength(DefaultInspectorWidth);
 
+    private const double MinRailWidth = 180;
+    private const double DefaultRailWidth = 230;
+    private GridLength _savedRailWidth = new GridLength(DefaultRailWidth);
+
     private ColumnDefinition? InspectorColumn => 
-        MainWorkspaceGrid?.ColumnDefinitions != null && MainWorkspaceGrid.ColumnDefinitions.Count > 2 
-            ? MainWorkspaceGrid.ColumnDefinitions[2] 
+        MainWorkspaceGrid?.ColumnDefinitions != null && MainWorkspaceGrid.ColumnDefinitions.Count > 4 
+            ? MainWorkspaceGrid.ColumnDefinitions[4] 
+            : null;
+
+    private ColumnDefinition? RailColumn =>
+        MainWorkspaceGrid?.ColumnDefinitions != null && MainWorkspaceGrid.ColumnDefinitions.Count > 0 
+            ? MainWorkspaceGrid.ColumnDefinitions[0] 
             : null;
 
     public MainWindow()
@@ -28,6 +37,8 @@ public partial class MainWindow : Window
         DataContext = vm;
 
         vm.SaveFinishedWithErrors += OnSaveFinishedWithErrors;
+        vm.RequestOpenBulkScrapeQueue += () => BulkScrapeQueue_Click(null, new RoutedEventArgs());
+        vm.RequestOpenRenameFiles += () => RenameFiles_Click(null, new RoutedEventArgs());
         vm.ConfirmCbrConversionRequested = async fileNames =>
         {
             var dialog = new CbrConversionConfirmWindow(fileNames);
@@ -37,6 +48,7 @@ public partial class MainWindow : Window
         vm.PropertyChanged += Vm_PropertyChanged;
 
         UpdateInspectorColumnWidth(vm.IsInspectorVisible);
+        UpdateRailColumnWidth(vm.IsRailVisible);
 
         if (DebugLoggingMenuCheckBox != null)
         {
@@ -46,9 +58,37 @@ public partial class MainWindow : Window
 
     private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainWindowViewModel.IsInspectorVisible) && DataContext is MainWindowViewModel vm)
+        if (DataContext is MainWindowViewModel vm)
         {
-            UpdateInspectorColumnWidth(vm.IsInspectorVisible);
+            if (e.PropertyName == nameof(MainWindowViewModel.IsInspectorVisible))
+            {
+                UpdateInspectorColumnWidth(vm.IsInspectorVisible);
+            }
+            else if (e.PropertyName == nameof(MainWindowViewModel.IsRailVisible))
+            {
+                UpdateRailColumnWidth(vm.IsRailVisible);
+            }
+        }
+    }
+
+    private void UpdateRailColumnWidth(bool isVisible)
+    {
+        if (RailColumn == null) return;
+
+        if (!isVisible)
+        {
+            if (RailColumn.Width.Value >= MinRailWidth)
+            {
+                _savedRailWidth = RailColumn.Width;
+            }
+            RailColumn.MinWidth = 0;
+            RailColumn.Width = new GridLength(0);
+        }
+        else
+        {
+            RailColumn.MinWidth = MinRailWidth;
+            RailColumn.MaxWidth = 350;
+            RailColumn.Width = _savedRailWidth.Value >= MinRailWidth ? _savedRailWidth : new GridLength(DefaultRailWidth);
         }
     }
 
@@ -473,6 +513,14 @@ public partial class MainWindow : Window
     private async void NativeSyncToKomga_Click(object? sender, EventArgs e)
     {
         if (DataContext is MainWindowViewModel vm) await vm.SyncToKomgaCommand.ExecuteAsync(null);
+    }
+    private void NativeShowOverview_Click(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm) vm.ShowOverviewViewCommand.Execute(null);
+    }
+    private void NativeShowSpreadsheet_Click(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm) vm.ShowSpreadsheetViewCommand.Execute(null);
     }
     private void NativeToggleDebugLogging_Click(object? sender, EventArgs e) => ToggleDebugLogging_Click(sender, new RoutedEventArgs());
     private void NativeThemeSystem_Click(object? sender, EventArgs e) => ThemeSystem_Click(sender, new RoutedEventArgs());

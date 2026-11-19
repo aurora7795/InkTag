@@ -316,8 +316,8 @@ Tracked against `aurora7795/InkTag`:
   Extract hardcoded series alias transformations from `MetadataScraperService` into a dedicated resolver. (Resolved in #36).
 - [x] [**#37**](https://github.com/aurora7795/InkTag/issues/37) — **L6 · Warn on unencrypted HTTP Komga URLs.**
   Emit an `AppLogger.LogWarning` when defaulting to unencrypted HTTP before transmitting credentials. (Resolved in #37).
-- [**#38**](https://github.com/aurora7795/InkTag/issues/38) — **GUI Layout Explorations A & C · Library Rail and Health Dashboard.**
-  Introduce persistent smart-list navigation rail and collection health overview dashboard.
+- [x] [**#38**](https://github.com/aurora7795/InkTag/issues/38) — **GUI Layout Explorations A & C · Library Rail and Health Dashboard.**
+  Introduce persistent smart-list navigation rail and collection health overview dashboard. (Resolved in #38).
 
 ---
 

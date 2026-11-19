@@ -17,6 +17,42 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #38]: Library Health Dashboard & Navigation Rail Verification
+* **Branch / Commit:** `feat/issue-38-library-health-dashboard`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Gui` (`MainWindow.axaml`, `MainWindowViewModel.cs`, `NavRailGroupViewModel.cs`, `ComicItemViewModel.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows GUI)
+* **Goal:** Verify that the new Health Dashboard provides high-level diagnostics (tagged %, untagged, errors, last batch job, quick actions) and that the Library Navigation Rail enables one-click filtering by smart lists, series, and publishers while preserving the full 35-column spreadsheet editor.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Empty State & Tab Navigation):**
+  1. Launch InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Verify the application launches into the "📊 Overview" (Dashboard) tab showing the welcome card and an "Open Comic Folder..." button.
+  3. Click "📑 Library Grid" in the top tabbar: verify it switches to the spreadsheet DataGrid with the Library Rail on the left and Inspector on the right.
+  4. Click "📊 Overview": verify it switches back cleanly.
+- [ ] **Step 2 (Verify Health Metric Tiles & Needs Attention):**
+  1. Open a folder containing comic files (some tagged, some untagged, some modified, or with errors).
+  2. Verify the 4 metric stat tiles display: Tagged (with percentage and progress bar), Untagged, Modified, and Read Errors.
+  3. Verify the "Needs Attention" list shows files needing tagging or attention with appropriate status badges (`UNTAGGED`, `ERROR`, `MODIFIED`).
+  4. Click the "Inspect →" button on any item in "Needs Attention": verify it switches to the Library Grid with that comic selected and the Inspector panel open.
+  5. Click any stat tile (e.g. "Untagged"): verify it switches to the Library Grid with the filter set to Untagged.
+- [ ] **Step 3 (Verify Library Rail & Browse Hierarchy):**
+  1. In the Library Grid view, inspect the left rail (~220px).
+  2. Click "Untagged" in the smart list: verify the grid filters to untagged comics.
+  3. In the "Browse" section, switch between "Series" and "Publisher" tabs.
+  4. Click a series (e.g. "Spawn"): verify the grid filters to that series and a breadcrumb banner appears above the grid (`Filter: Series: Spawn [✕ Clear]`).
+  5. Click `[✕ Clear]`: verify the filter resets and all comics are shown again.
+  6. Click the "Rail" toggle button in the toolbar (or View -> Library Rail): verify the rail collapses, and clicking again restores it.
+- [ ] **Step 4 (Verify Quick Actions & Batch Rollback on Dashboard):**
+  1. On the Overview tab, verify Quick Action buttons: Bulk Auto-Tag, Bulk Rename, and Sync to Komga.
+  2. Verify the "Last Batch Job" card displays recent batch information (or "No recent batch jobs recorded" if empty) and provides a "Roll Back Batch" button.
+
+* **Expected Result:** High-level library health diagnostics, fast one-click navigation by publisher/series, and seamless view toggling without spreadsheet regressions.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #21]: Atomic Batch Rollback & Redo Points Verification
 * **Branch / Commit:** `feat/issue-21-atomic-batch-rollback`
 * **Date Added:** 2026-11-19
