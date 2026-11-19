@@ -284,7 +284,7 @@ The finding is really two smaller things:
 
 ## Deferred — GitHub issues
 
-Filed 2026-09-02 against `aurora7795/InkTag`:
+Tracked against `aurora7795/InkTag`:
 
 - [**#19**](https://github.com/aurora7795/InkTag/issues/19) — **L2 · `AppLogger` buffered file I/O.**
   Keep a `StreamWriter` open (or a flush timer) instead of `File.AppendAllText` + `FileInfo` stat
@@ -299,6 +299,26 @@ Filed 2026-09-02 against `aurora7795/InkTag`:
 - [**#22**](https://github.com/aurora7795/InkTag/issues/22) — **L8 · CLI arg-parser migration.**
   Move `src/InkTag.Cli/Program.cs` to `System.CommandLine`; removes ~800 lines and adds
   `--opt=value` support. Keep the `--json` output contract byte-identical.
+- [**#29**](https://github.com/aurora7795/InkTag/issues/29) — **M2 · Archive repack nested directory integrity.**
+  Preserve relative directory hierarchies with `ExtractFullPath = true` and recursive enumeration in `RemoveArchivePages`.
+- [**#30**](https://github.com/aurora7795/InkTag/issues/30) — **L3 · Page-strip provenance & non-clobbering backup naming.**
+  Capture pre-write snapshot and use GUID-suffixed backup filenames during page removal.
+- [**#31**](https://github.com/aurora7795/InkTag/issues/31) — **M8 · Atomic file write-replace pattern.**
+  Implement `AtomicFile` temp-file-and-rename pattern for manifest, settings, and scraper cache, and warn on corrupt reads.
+- [**#32**](https://github.com/aurora7795/InkTag/issues/32) — **M6 · Restrict settings.json permissions on Unix.**
+  Enforce POSIX `0600` permissions on `settings.json` containing plaintext API keys and credentials.
+- [**#33**](https://github.com/aurora7795/InkTag/issues/33) — **M5 · Release raw cover bytes in bulk scrape queue.**
+  Null out `LocalCoverBytes` after computing `LocalCoverHash` to reduce RAM usage on large library operations.
+- [**#34**](https://github.com/aurora7795/InkTag/issues/34) — **M1 · LruImageCache docstring correction & reclamation.**
+  Correct misleading claims of automatic bitmap disposal and evaluate safe unmanaged GPU handle disposal.
+- [**#35**](https://github.com/aurora7795/InkTag/issues/35) — **L7 · Sanitize Windows reserved filenames & trailing dots.**
+  Sanitize Windows device names (`CON`, `PRN`, etc.) and trailing periods in `ComicFileRenamer`.
+- [**#36**](https://github.com/aurora7795/InkTag/issues/36) — **L4 · Decouple series title overrides into SeriesAliasResolver.**
+  Extract hardcoded series alias transformations from `MetadataScraperService` into a dedicated resolver.
+- [**#37**](https://github.com/aurora7795/InkTag/issues/37) — **L6 · Warn on unencrypted HTTP Komga URLs.**
+  Emit an `AppLogger.LogWarning` when defaulting to unencrypted HTTP before transmitting credentials.
+- [**#38**](https://github.com/aurora7795/InkTag/issues/38) — **GUI Layout Explorations A & C · Library Rail and Health Dashboard.**
+  Introduce persistent smart-list navigation rail and collection health overview dashboard.
 
 ---
 
@@ -314,3 +334,4 @@ Filed 2026-09-02 against `aurora7795/InkTag`:
 | 2026-09-02 | Filed the 4 deferred items as issues #19 (L2), #20 (L1), #21 (M7 full), #22 (L8). |
 | 2026-09-02 | Accuracy passes over `README.md` and the Layer 2 wiki + curator skill (test/tool counts, method signatures, removed inaccurate claims). |
 | 2026-09-03 | Phase 3 completed (`refactor/scrape-merge-semantics`, commit `d2ef910`, merged `9e89dab`). |
+| 2026-11-19 | Formalized GitHub issue capture protocol and populated issues #29 through #38 from uncompleted phases (M2, L3, M8, M6, M5, M1, L7, L4, L6, GUI layout explorations). |

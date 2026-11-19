@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **GitHub Issue Capture & Tracking Protocols**: Updated repository guidelines (`.agents/AGENTS.md`, `CLAUDE.md`, `.agents/skills/planner.md`, `.agents/skills/audit.md`, `.agents/workflows/build_cycle.md`) establishing GitHub Issues as the canonical backlog for all pending work, technical debt, and deferred items.
 - **GitHub Issue Templates**: Added structured issue templates under `.github/ISSUE_TEMPLATE/` (`bug_report.md`, `feature_request.md`, `deferred_work.md`) and established repository labels for `deferred` and `tech-debt`.
+- **Backlog Population (#29–#38)**: Audited existing review reports (`docs/review-remediation-plan-2026-09-01.md`) and design explorations (`docs/design/README.md`) to file 10 comprehensive GitHub Issues covering archive repack integrity (#29), page-strip provenance (#30), atomic persistence (#31), secrets permissions (#32), bulk scrape memory (#33), image cache reclamation (#34), Windows filename sanitization (#35), scraper series alias extraction (#36), Komga HTTP warning (#37), and GUI health dashboard / navigation rail (#38).
 
 
 ---
