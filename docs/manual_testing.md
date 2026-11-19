@@ -17,6 +17,32 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #37]: Warn on Unencrypted HTTP Komga Server URLs
+* **Branch / Commit:** `fix/issue-37-komga-plaintext-http-warning`
+* **Date Added:** 2026-11-19
+* **Target Subsystems:** `InkTag.Core` (`KomgaClient.cs`, `CleanServerUrl`, `AppLogger`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows)
+* **Goal:** Verify that entering a remote HTTP Komga URL logs a security warning advising the user to use HTTPS, while localhost/loopback connections do not trigger spurious warnings.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Test Remote HTTP Warning):**
+  1. Open InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`) or use the CLI / MCP server.
+  2. Open **Settings** and set Komga Server URL to `remote.komga.example:25600` or `http://remote.komga.example:25600`.
+  3. Enter an API key and click **Test Connection** (or save).
+  4. Inspect the application log (`~/.local/share/InkTag/logs/InkTag.log` on Linux/macOS or via Help $\rightarrow$ Open Logs):
+     Verify the log contains:
+     `[WARN] [Komga] Inferred unencrypted 'http://' scheme for remote host 'remote.komga.example'` (or `Using unencrypted HTTP...`).
+- [ ] **Step 2 (Verify No Warning for Localhost):**
+  1. Change Komga Server URL to `http://localhost:25600` or `http://127.0.0.1:25600`.
+  2. Test connection or save.
+  3. Verify that no plaintext warning is emitted in the log.
+
+* **Expected Result:** Plaintext HTTP warnings are emitted only for non-loopback endpoints to prevent credential leakage.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #32]: Restrict Filesystem Permissions on settings.json (Unix 0600 / 0700)
 * **Branch / Commit:** `fix/issue-32-settings-file-permissions`
 * **Date Added:** 2026-11-19

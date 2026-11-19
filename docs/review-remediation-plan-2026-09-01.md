@@ -272,8 +272,8 @@ The finding is really two smaller things:
       remove the `"0.12.0"` literal (consider a shared `InkTagVersion` constant).
 - [ ] **L4** `MetadataScraperService.cs:54` — move the "Buffy" title rules into a
       `SeriesAliasResolver` backed by a small data table.
-- [ ] **L6** `KomgaClient.CleanServerUrl` — `AppLogger.LogWarning` when it injects `http://` for a
-      schemeless URL.
+- [x] **L6** `KomgaClient.CleanServerUrl` — `AppLogger.LogWarning` when it injects `http://` for a
+      schemeless URL. Fixed in #37.
 - [ ] **L7** `ComicFileRenamer.SanitizeFilename` — reject/rewrite Windows reserved device names
       (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) and trim trailing dots/spaces;
       add `RenamingTests` cases.
@@ -335,3 +335,4 @@ Tracked against `aurora7795/InkTag`:
 | 2026-09-02 | Accuracy passes over `README.md` and the Layer 2 wiki + curator skill (test/tool counts, method signatures, removed inaccurate claims). |
 | 2026-09-03 | Phase 3 completed (`refactor/scrape-merge-semantics`, commit `d2ef910`, merged `9e89dab`). |
 | 2026-11-19 | Formalized GitHub issue capture protocol and populated issues #29 through #38 from uncompleted phases (M2, L3, M8, M6, M5, M1, L7, L4, L6, GUI layout explorations). |
+| 2026-11-19 | L6 resolved (#37): emitted warning on unencrypted HTTP Komga server URLs before transmitting credentials. |

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using InkTag.Core;
 using InkTag.Core.Configuration;
 using InkTag.Core.Komga;
+using InkTag.Core.Logging;
 using Xunit;
 
 namespace InkTag.Tests;
@@ -272,5 +273,70 @@ public class KomgaClientTests
         Assert.Equal(1, report.BooksAnalyzed);
         Assert.Equal(1, report.CollectionsSynced);
         Assert.True(collectionCreated);
+    }
+}
+
+[Collection("AppLogger")]
+public class KomgaClientUrlSecurityTests
+{
+    [Theory]
+    [InlineData("komga.example.com:25600", "http://komga.example.com:25600", "Inferred unencrypted 'http://' scheme for remote host 'komga.example.com'")]
+    [InlineData("http://remote-server.local:25600/opds", "http://remote-server.local:25600", "Using unencrypted HTTP for remote host 'remote-server.local'")]
+    public void CleanServerUrl_WarnsWhenUsingHttpOnRemoteHost(string input, string expectedUrl, string expectedLogFragment)
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "InkTagKomgaUrlTests_" + Guid.NewGuid().ToString("N"));
+        string customLogPath = Path.Combine(tempDir, "test.log");
+
+        try
+        {
+            AppLogger.Initialize(customLogPath);
+
+            string cleaned = KomgaClient.CleanServerUrl(input);
+
+            Assert.Equal(expectedUrl, cleaned);
+            Assert.True(File.Exists(customLogPath));
+            string logContent = File.ReadAllText(customLogPath);
+            Assert.Contains(expectedLogFragment, logContent);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("http://localhost:25600")]
+    [InlineData("http://127.0.0.1:25600")]
+    [InlineData("localhost:25600")]
+    [InlineData("127.0.0.1:25600")]
+    [InlineData("https://komga.example.com:25600")]
+    public void CleanServerUrl_DoesNotWarnForLoopbackOrHttps(string input)
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "InkTagKomgaUrlTests_" + Guid.NewGuid().ToString("N"));
+        string customLogPath = Path.Combine(tempDir, "test.log");
+
+        try
+        {
+            AppLogger.Initialize(customLogPath);
+
+            KomgaClient.CleanServerUrl(input);
+
+            if (File.Exists(customLogPath))
+            {
+                string logContent = File.ReadAllText(customLogPath);
+                Assert.DoesNotContain("[Komga] Inferred unencrypted", logContent);
+                Assert.DoesNotContain("[Komga] Using unencrypted HTTP", logContent);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
+        }
     }
 }

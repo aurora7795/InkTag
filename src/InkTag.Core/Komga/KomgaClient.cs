@@ -71,14 +71,28 @@ public class KomgaClient : IDisposable
         if (string.IsNullOrWhiteSpace(rawUrl)) return string.Empty;
         rawUrl = rawUrl.Trim();
 
+        bool defaultedScheme = false;
         if (!rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
             !rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             rawUrl = "http://" + rawUrl;
+            defaultedScheme = true;
         }
 
         if (Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri))
         {
+            if (string.Equals(uri.Scheme, "http", StringComparison.OrdinalIgnoreCase) && !uri.IsLoopback)
+            {
+                if (defaultedScheme)
+                {
+                    AppLogger.LogWarning($"[Komga] Inferred unencrypted 'http://' scheme for remote host '{uri.Host}'. Authentication credentials will be transmitted in plaintext. Consider configuring 'https://' for remote Komga instances.");
+                }
+                else
+                {
+                    AppLogger.LogWarning($"[Komga] Using unencrypted HTTP for remote host '{uri.Host}'. Authentication credentials will be transmitted in plaintext. Consider configuring 'https://' for remote Komga instances.");
+                }
+            }
+
             string path = uri.AbsolutePath.TrimEnd('/');
             // Strip common web UI suffixes if pasted directly from browser
             while (path.EndsWith("/login", StringComparison.OrdinalIgnoreCase) ||
