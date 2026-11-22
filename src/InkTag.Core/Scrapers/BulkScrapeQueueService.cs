@@ -37,6 +37,7 @@ public class BulkScrapeQueueItem
     public ComicInfo ExistingComic { get; set; } = new();
     public ComicSearchQuery ParsedQuery { get; set; } = new();
     public byte[]? LocalCoverBytes { get; set; }
+    public byte[]? LocalThumbnailBytes { get; set; }
     public ulong LocalCoverHash { get; set; }
     public bool DetectedIntroPage { get; set; }
     public int TrueCoverPageIndex { get; set; }
@@ -217,6 +218,7 @@ public class BulkScrapeQueueService
                         if (item.LocalCoverBytes != null && item.LocalCoverBytes.Length > 0)
                         {
                             item.LocalCoverHash = PerceptualHashService.ComputeDHash(item.LocalCoverBytes);
+                            item.LocalThumbnailBytes = PerceptualHashService.CreateThumbnail(item.LocalCoverBytes);
                         }
                     }
                     catch (Exception ex)
@@ -323,6 +325,7 @@ public class BulkScrapeQueueService
                                                     item.TrueCoverPageIndex = 1;
                                                     item.TrueCoverBytes = page1Bytes;
                                                     item.LocalCoverBytes = page1Bytes;
+                                                    item.LocalThumbnailBytes = PerceptualHashService.CreateThumbnail(page1Bytes);
                                                     item.LocalCoverHash = page1Hash;
                                                     ranked = p1Ranked;
                                                     top = topP1;
@@ -394,6 +397,7 @@ public class BulkScrapeQueueService
                                                     item.TrueCoverPageIndex = 1;
                                                     item.TrueCoverBytes = page1Bytes;
                                                     item.LocalCoverBytes = page1Bytes;
+                                                    item.LocalThumbnailBytes = PerceptualHashService.CreateThumbnail(page1Bytes);
                                                     item.LocalCoverHash = page1Hash;
                                                     ranked = p1Ranked;
                                                     top = topP1;
@@ -603,6 +607,7 @@ public class BulkScrapeQueueService
                                         item.TrueCoverPageIndex = 1;
                                         item.TrueCoverBytes = page1Bytes;
                                         item.LocalCoverBytes = page1Bytes;
+                                        item.LocalThumbnailBytes = PerceptualHashService.CreateThumbnail(page1Bytes);
                                         item.LocalCoverHash = page1Hash;
                                         ranked = p1Ranked;
                                         top = topP1;

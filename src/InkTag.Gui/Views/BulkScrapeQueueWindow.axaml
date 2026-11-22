@@ -124,7 +124,7 @@
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Background="{Binding StatusBadgeBackground}" CornerRadius="3" Padding="6,3"
                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                          ToolTip.Tip="{Binding StatusTooltip}" ToolTip.ShowDelay="100">
+                          ToolTip.Tip="{Binding StatusTooltip}" ToolTip.ShowDelay="400">
                     <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
                   </Border>
                 </DataTemplate>
@@ -136,16 +136,16 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Width="40" Height="58" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="3" ClipToBounds="True" Margin="4"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.ShowDelay="100">
+                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.ShowDelay="400">
                     <ToolTip.Tip>
-                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="280">
-                        <StackPanel Spacing="6">
-                          <Image Source="{Binding LocalThumbnail}" Height="320" Stretch="Uniform"
+                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="180">
+                        <StackPanel Spacing="4">
+                          <Image Source="{Binding LocalThumbnail}" Height="180" MaxWidth="140" Stretch="Uniform"
                                  IsVisible="{Binding LocalThumbnail, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                          <TextBlock Text="No Cover Extracted" Foreground="Gray" HorizontalAlignment="Center"
+                          <TextBlock Text="No Cover Extracted" Foreground="Gray" HorizontalAlignment="Center" FontSize="11" Margin="4,2"
                                      IsVisible="{Binding LocalThumbnail, Converter={x:Static ObjectConverters.IsNull}}"/>
-                          <TextBlock Text="{Binding Filename}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11" TextWrapping="Wrap"/>
-                          <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="10"/>
+                          <TextBlock Text="{Binding Filename}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="10.5" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="9.5" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                       </Border>
                     </ToolTip.Tip>
@@ -163,7 +163,7 @@
                     <controls:HuggingBadgePanel Spacing="6" VerticalAlignment="Center">
                       <TextBlock Text="{Binding Filename}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextPrimaryBrush}"
                                  TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                 ToolTip.Tip="{Binding Filename}" ToolTip.ShowDelay="100"/>
+                                 ToolTip.Tip="{Binding Filename}" ToolTip.ShowDelay="400"/>
                       <Border IsVisible="{Binding IsCbr}"
                               Background="#3D2800"
                               BorderBrush="#B87700"
@@ -172,16 +172,16 @@
                               Padding="5,1"
                               VerticalAlignment="Center"
                               ToolTip.Tip="{Binding FormatConversionTooltip}"
-                              ToolTip.ShowDelay="100">
+                              ToolTip.ShowDelay="400">
                         <TextBlock Text="{Binding FormatBadgeText}" FontSize="9.5" FontWeight="Bold" Foreground="#FFAA00" VerticalAlignment="Center"/>
                       </Border>
                     </controls:HuggingBadgePanel>
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
                       <TextBlock Text="{Binding ParsedQueryText}" FontSize="11" Foreground="#569CD6"
                                  TextTrimming="CharacterEllipsis"
-                                 ToolTip.Tip="{Binding ParsedQueryText}" ToolTip.ShowDelay="100"/>
+                                 ToolTip.Tip="{Binding ParsedQueryText}" ToolTip.ShowDelay="400"/>
                       <Border Background="#8A5A1A" CornerRadius="3" Padding="4,1" IsVisible="{Binding HasIntroPageBadge}"
-                              ToolTip.Tip="Cover visually matched on page 2 (Intro/advertisement page detected on page 1)" ToolTip.ShowDelay="100">
+                              ToolTip.Tip="Cover visually matched on page 2 (Intro/advertisement page detected on page 1)" ToolTip.ShowDelay="400">
                         <TextBlock Text="Page 2 Cover" FontSize="9" FontWeight="Bold" Foreground="#FFD8A8"/>
                       </Border>
                     </StackPanel>
@@ -197,10 +197,10 @@
                   <StackPanel VerticalAlignment="Center" Margin="8,0">
                     <TextBlock Text="{Binding MatchedSeriesName}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextPrimaryBrush}"
                                TextTrimming="CharacterEllipsis"
-                               ToolTip.Tip="{Binding MatchedSeriesName}" ToolTip.ShowDelay="100"/>
+                               ToolTip.Tip="{Binding MatchedSeriesName}" ToolTip.ShowDelay="400"/>
                     <TextBlock Text="{Binding MatchedIssueTitle}" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
-                               ToolTip.Tip="{Binding MatchedIssueTitle}" ToolTip.ShowDelay="100"
+                               ToolTip.Tip="{Binding MatchedIssueTitle}" ToolTip.ShowDelay="400"
                                IsVisible="{Binding MatchedIssueTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                   </StackPanel>
                 </DataTemplate>
@@ -212,16 +212,16 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Width="40" Height="58" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="3" ClipToBounds="True" Margin="4"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.ShowDelay="100">
+                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.ShowDelay="400">
                     <ToolTip.Tip>
-                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="280">
-                        <StackPanel Spacing="6">
-                          <Image Source="{Binding RemoteThumbnail}" Height="320" Stretch="Uniform"
+                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="180">
+                        <StackPanel Spacing="4">
+                          <Image Source="{Binding RemoteThumbnail}" Height="180" MaxWidth="140" Stretch="Uniform"
                                  IsVisible="{Binding RemoteThumbnail, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                          <TextBlock Text="No Cover" Foreground="Gray" HorizontalAlignment="Center"
+                          <TextBlock Text="No Cover" Foreground="Gray" HorizontalAlignment="Center" FontSize="11" Margin="4,2"
                                      IsVisible="{Binding RemoteThumbnail, Converter={x:Static ObjectConverters.IsNull}}"/>
-                          <TextBlock Text="{Binding MatchedSeriesName}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11" TextWrapping="Wrap"/>
-                          <TextBlock Text="{Binding MatchedIssueTitle}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="10"/>
+                          <TextBlock Text="{Binding MatchedSeriesName}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="10.5" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding MatchedIssueTitle}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="9.5" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                       </Border>
                     </ToolTip.Tip>
@@ -236,7 +236,7 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2"
-                              ToolTip.Tip="{Binding ConfidenceTooltip}">
+                              ToolTip.Tip="{Binding ConfidenceTooltip}" ToolTip.ShowDelay="400">
                     <TextBlock Text="{Binding ConfidencePercentage}" FontSize="11" FontWeight="SemiBold"
                                Foreground="{Binding ConfidenceColor}" HorizontalAlignment="Center"/>
                     <ProgressBar Value="{Binding ConfidenceScore}" Minimum="0" Maximum="1" Height="3" Width="60"
@@ -253,7 +253,7 @@
                 <DataTemplate x:DataType="vm:BulkScrapeItemViewModel">
                   <Border Background="{Binding VisualBadgeBackground}" CornerRadius="3" Padding="6,2"
                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                          ToolTip.Tip="{Binding VisualMatchTooltip}">
+                          ToolTip.Tip="{Binding VisualMatchTooltip}" ToolTip.ShowDelay="400">
                     <TextBlock Text="{Binding VisualMatchLabel}" FontSize="10" FontWeight="SemiBold"
                                Foreground="{Binding VisualBadgeForeground}" HorizontalAlignment="Center"/>
                   </Border>

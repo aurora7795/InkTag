@@ -69,4 +69,41 @@ public class PerceptualHashTests
         ulong hash = PerceptualHashService.ComputeDHash(bytes);
         Assert.NotEqual(0UL, hash);
     }
+
+    [Fact]
+    public void CreateThumbnail_ValidImage_ReturnsDownscaledJpegBytes()
+    {
+        using var bitmap = new SKBitmap(600, 900);
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Blue);
+            using var paint = new SKPaint { Color = SKColors.Yellow };
+            canvas.DrawCircle(300, 450, 200, paint);
+        }
+
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Jpeg, 90);
+        byte[] originalBytes = data.ToArray();
+
+        byte[]? thumbBytes = PerceptualHashService.CreateThumbnail(originalBytes, maxDimension: 240);
+        Assert.NotNull(thumbBytes);
+        Assert.NotEmpty(thumbBytes);
+        Assert.True(thumbBytes.Length < originalBytes.Length);
+
+        // Verify dimensions of the generated thumbnail
+        using var thumbBitmap = SKBitmap.Decode(thumbBytes);
+        Assert.NotNull(thumbBitmap);
+        Assert.True(thumbBitmap.Width <= 240);
+        Assert.True(thumbBitmap.Height <= 240);
+        Assert.Equal(240, Math.Max(thumbBitmap.Width, thumbBitmap.Height));
+    }
+
+    [Fact]
+    public void CreateThumbnail_NullOrEmptyOrCorrupt_ReturnsNull()
+    {
+        Assert.Null(PerceptualHashService.CreateThumbnail((byte[])null!));
+        Assert.Null(PerceptualHashService.CreateThumbnail(Array.Empty<byte>()));
+        Assert.Null(PerceptualHashService.CreateThumbnail((Stream)null!));
+        Assert.Null(PerceptualHashService.CreateThumbnail(new MemoryStream(new byte[] { 1, 2, 3 })));
+    }
 }

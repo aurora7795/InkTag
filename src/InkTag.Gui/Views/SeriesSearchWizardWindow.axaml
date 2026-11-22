@@ -175,13 +175,13 @@
                             <!-- Local Cover Preview Thumbnail with ToolTip -->
                             <Border Width="34" Height="48" Background="#11111B" CornerRadius="4" BorderBrush="#74C7EC" BorderThickness="1" ClipToBounds="True"
                                     IsVisible="{Binding #LocalCoverImageHeader.Source, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                    ToolTip.ShowDelay="100">
+                                    ToolTip.ShowDelay="400">
                                 <ToolTip.Tip>
-                                    <Border Background="#181825" BorderBrush="#74C7EC" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
-                                        <StackPanel Spacing="6">
-                                            <TextBlock Text="Your Local Comic Cover" FontSize="12" FontWeight="Bold" Foreground="#74C7EC" HorizontalAlignment="Center"/>
-                                            <Image Source="{Binding #LocalCoverImageHeader.Source}" Height="350" Stretch="Uniform"/>
-                                            <TextBlock x:Name="LocalFileNameTooltipText" FontSize="11" Foreground="#CDD6F4" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                                    <Border Background="#181825" BorderBrush="#74C7EC" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Your Local Comic Cover" FontSize="11" FontWeight="Bold" Foreground="#74C7EC" HorizontalAlignment="Center"/>
+                                            <Image Source="{Binding #LocalCoverImageHeader.Source}" Height="200" MaxWidth="150" Stretch="Uniform"/>
+                                            <TextBlock x:Name="LocalFileNameTooltipText" FontSize="10.5" Foreground="#CDD6F4" TextWrapping="Wrap" HorizontalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                 </ToolTip.Tip>
@@ -257,12 +257,12 @@
                                     IsVisible="{Binding #LocalCoverImageBottom.Source, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <!-- Local Cover -->
                             <Border Width="38" Height="56" Background="#11111B" CornerRadius="4" BorderBrush="#74C7EC" BorderThickness="1" ClipToBounds="True"
-                                    ToolTip.ShowDelay="100">
+                                    ToolTip.ShowDelay="400">
                                 <ToolTip.Tip>
-                                    <Border Background="#181825" BorderBrush="#74C7EC" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
+                                    <Border Background="#181825" BorderBrush="#74C7EC" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Your Local Comic Cover" FontSize="11" FontWeight="Bold" Foreground="#74C7EC" HorizontalAlignment="Center"/>
-                                            <Image Source="{Binding #LocalCoverImageBottom.Source}" Height="340" Stretch="Uniform"/>
+                                            <Image Source="{Binding #LocalCoverImageBottom.Source}" Height="200" MaxWidth="150" Stretch="Uniform"/>
                                         </StackPanel>
                                     </Border>
                                 </ToolTip.Tip>
@@ -273,12 +273,12 @@
 
                             <!-- Candidate Remote Cover -->
                             <Border Width="38" Height="56" Background="#11111B" CornerRadius="4" BorderBrush="#89B4FA" BorderThickness="1" ClipToBounds="True"
-                                    ToolTip.ShowDelay="100">
+                                    ToolTip.ShowDelay="400">
                                 <ToolTip.Tip>
-                                    <Border Background="#181825" BorderBrush="#89B4FA" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
+                                    <Border Background="#181825" BorderBrush="#89B4FA" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Selected Candidate Cover" FontSize="11" FontWeight="Bold" Foreground="#89B4FA" HorizontalAlignment="Center"/>
-                                            <Image Source="{Binding #CandidateCoverImageBottom.Source}" Height="340" Stretch="Uniform"
+                                            <Image Source="{Binding #CandidateCoverImageBottom.Source}" Height="200" MaxWidth="150" Stretch="Uniform"
                                                    IsVisible="{Binding #CandidateCoverImageBottom.Source, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                                             <TextBlock Text="No Cover" Foreground="Gray" HorizontalAlignment="Center"
                                                        IsVisible="{Binding #CandidateCoverImageBottom.Source, Converter={x:Static ObjectConverters.IsNull}}"/>

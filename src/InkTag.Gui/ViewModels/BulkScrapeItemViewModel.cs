@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InkTag.Core;
 using InkTag.Core.Images;
 using InkTag.Core.Scrapers;
 using InkTag.Gui.Services;
@@ -49,12 +50,13 @@ public class BulkScrapeItemViewModel : ObservableObject
         _status = item.Status;
         _statusMessage = item.StatusMessage;
 
-        // Load local cover thumbnail if bytes are available
-        if (item.LocalCoverBytes != null && item.LocalCoverBytes.Length > 0)
+        // Load local cover thumbnail if bytes are available (preferring lightweight downscaled thumbnail)
+        byte[]? thumbBytes = item.LocalThumbnailBytes ?? item.LocalCoverBytes;
+        if (thumbBytes != null && thumbBytes.Length > 0)
         {
             try
             {
-                using var ms = new MemoryStream(item.LocalCoverBytes);
+                using var ms = new MemoryStream(thumbBytes);
                 _localThumbnail = new Bitmap(ms);
             }
             catch
@@ -439,11 +441,12 @@ public class BulkScrapeItemViewModel : ObservableObject
         OnPropertyChanged(nameof(Filename));
         OnPropertyChanged(nameof(FilePath));
 
-        if (Item.LocalCoverBytes != null && Item.LocalCoverBytes.Length > 0 && (LocalThumbnail == null || Item.DetectedIntroPage))
+        byte[]? thumbBytes = Item.LocalThumbnailBytes ?? Item.LocalCoverBytes;
+        if (thumbBytes != null && thumbBytes.Length > 0 && (LocalThumbnail == null || Item.DetectedIntroPage))
         {
             try
             {
-                using var ms = new MemoryStream(Item.LocalCoverBytes);
+                using var ms = new MemoryStream(thumbBytes);
                 LocalThumbnail = new Bitmap(ms);
             }
             catch
@@ -451,10 +454,54 @@ public class BulkScrapeItemViewModel : ObservableObject
                 // Ignore
             }
         }
+        else if (LocalThumbnail == null && !string.IsNullOrEmpty(Item.FilePath) && File.Exists(Item.FilePath))
+        {
+            TryExtractThumbnailFallbackAsync();
+        }
 
         OnPropertyChanged(nameof(DetectedIntroPage));
         OnPropertyChanged(nameof(HasIntroPageBadge));
         OnPropertyChanged(nameof(IntroPageBadge));
+    }
+
+    private bool _isExtractingFallback;
+    private void TryExtractThumbnailFallbackAsync()
+    {
+        if (_isExtractingFallback || LocalThumbnail != null) return;
+        _isExtractingFallback = true;
+        string path = Item.FilePath;
+        int pageIndex = Item.DetectedIntroPage ? Item.TrueCoverPageIndex : 0;
+
+        Task.Run(() =>
+        {
+            try
+            {
+                var editor = new MetadataEditor();
+                byte[]? bytes = editor.ExtractCoverImageBytes(path, pageIndex);
+                if (bytes != null && bytes.Length > 0)
+                {
+                    byte[]? thumb = PerceptualHashService.CreateThumbnail(bytes) ?? bytes;
+                    Item.LocalThumbnailBytes = thumb;
+                    using var ms = new MemoryStream(thumb);
+                    var bmp = new Bitmap(ms);
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (LocalThumbnail == null)
+                        {
+                            LocalThumbnail = bmp;
+                        }
+                    });
+                }
+            }
+            catch
+            {
+                // Ignore fallback extraction failure
+            }
+            finally
+            {
+                _isExtractingFallback = false;
+            }
+        });
     }
 
     private void LoadMatchedThumbnailAsync(ComicSearchResult candidate)

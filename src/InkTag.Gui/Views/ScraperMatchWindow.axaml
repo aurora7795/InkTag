@@ -47,16 +47,16 @@
                     <Grid ColumnDefinitions="Auto, *">
                       <!-- Cover Thumbnail Image with Hover Preview -->
                       <Border Grid.Column="0" Width="50" Height="75" Background="{DynamicResource AppCardBrush}" CornerRadius="4" ClipToBounds="True" VerticalAlignment="Center"
-                              ToolTip.ShowDelay="100">
+                              ToolTip.ShowDelay="400">
                         <ToolTip.Tip>
-                          <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
-                            <StackPanel Spacing="6">
-                              <Image Source="{Binding Thumbnail}" Height="350" Stretch="Uniform"
+                          <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
+                            <StackPanel Spacing="4">
+                              <Image Source="{Binding Thumbnail}" Height="200" MaxWidth="150" Stretch="Uniform"
                                      IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                              <TextBlock Text="No Cover Image Available" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="10"
+                              <TextBlock Text="No Cover Image Available" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="6"
                                          IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNull}}"/>
-                              <TextBlock Text="{Binding SeriesTitle}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap"/>
-                              <TextBlock Text="{Binding IssueTitle}" Foreground="{DynamicResource AppTextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding SeriesTitle}" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11" FontWeight="Bold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Text="{Binding IssueTitle}" Foreground="{DynamicResource AppTextSecondaryBrush}" FontSize="10" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                           </Border>
                         </ToolTip.Tip>
@@ -106,14 +106,14 @@
                 <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="4">
                   <TextBlock Text="Current Local Cover" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" HorizontalAlignment="Center"/>
                   <Border Width="65" Height="95" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="4" ClipToBounds="True"
-                          ToolTip.ShowDelay="100">
+                          ToolTip.ShowDelay="400">
                     <ToolTip.Tip>
-                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
-                        <StackPanel Spacing="6">
-                          <TextBlock Text="Local Archive Cover" FontSize="12" FontWeight="Bold" Foreground="#4EC9B0" HorizontalAlignment="Center"/>
-                          <Image Source="{Binding LocalCoverImage}" Height="375" Width="250" Stretch="Uniform"
+                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="Local Archive Cover" FontSize="11" FontWeight="Bold" Foreground="#4EC9B0" HorizontalAlignment="Center"/>
+                          <Image Source="{Binding LocalCoverImage}" Height="200" MaxWidth="150" Stretch="Uniform"
                                  IsVisible="{Binding LocalCoverImage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                          <TextBlock Text="No Local Cover Available" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="10"
+                          <TextBlock Text="No Local Cover Available" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="6"
                                      IsVisible="{Binding LocalCoverImage, Converter={x:Static ObjectConverters.IsNull}}"/>
                         </StackPanel>
                       </Border>
@@ -148,14 +148,14 @@
                 <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="4">
                   <TextBlock Text="ComicVine Cover" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" HorizontalAlignment="Center"/>
                   <Border Width="65" Height="95" Background="{DynamicResource AppInputBackgroundBrush}" CornerRadius="4" ClipToBounds="True"
-                          ToolTip.ShowDelay="100">
+                          ToolTip.ShowDelay="400">
                     <ToolTip.Tip>
-                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="300">
-                        <StackPanel Spacing="6">
-                          <TextBlock Text="ComicVine API Cover" FontSize="12" FontWeight="Bold" Foreground="#3592FF" HorizontalAlignment="Center"/>
-                          <Image Source="{Binding SelectedCandidateThumbnail}" Height="375" Width="250" Stretch="Uniform"
+                      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" MaxWidth="200">
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="ComicVine API Cover" FontSize="11" FontWeight="Bold" Foreground="#3592FF" HorizontalAlignment="Center"/>
+                          <Image Source="{Binding SelectedCandidateThumbnail}" Height="200" MaxWidth="150" Stretch="Uniform"
                                  IsVisible="{Binding SelectedCandidateThumbnail, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                          <TextBlock Text="Select a Candidate Result" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" TextAlignment="Center" Margin="10"
+                          <TextBlock Text="Select a Candidate Result" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" TextAlignment="Center" Margin="6"
                                      IsVisible="{Binding SelectedCandidateThumbnail, Converter={x:Static ObjectConverters.IsNull}}"/>
                         </StackPanel>
                       </Border>

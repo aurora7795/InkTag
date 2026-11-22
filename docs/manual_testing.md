@@ -17,6 +17,37 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #47]: Cover Hover Preview Sizing and Show Delay Verification
+* **Branch / Commit:** `fix/issue-47-hover-cover-preview`
+* **Date Added:** 2026-11-22
+* **Target Subsystems:** `InkTag.Gui` (`BulkScrapeQueueWindow.axaml`, `BulkScrapeItemViewModel.cs`, `ScraperMatchWindow.axaml`, `SeriesSearchWizardWindow.axaml`), `InkTag.Core` (`BulkScrapeQueueService.cs`, `PerceptualHashService.cs`)
+* **Environment / OS:** Cross-platform (macOS, Linux, Windows GUI)
+* **Goal:** Verify that hovering over covers in the Bulk Auto-Tag Queue and scraper match windows shows a compact, non-disruptive preview tooltip with the artwork loaded, and that mouse movement over the table does not immediately fire intrusive popovers.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify ToolTip ShowDelay Behavior):**
+  1. Launch InkTag GUI (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Open a folder with several comic files and launch the Bulk Auto-Tag Queue (Ctrl+B or from the Overview Quick Actions).
+  3. Rapidly glide the mouse cursor across the queue table across various columns (Status, Filename, ComicVine Match, Confidence, Covers).
+  4. Verify that tooltips DO NOT pop up immediately during mouse transit (400ms delay prevents intrusive popovers).
+- [ ] **Step 2 (Verify Compact Local and Remote Cover Tooltips):**
+  1. Hover over the `Local Cover` thumbnail column for an item and hold the cursor steady for ~400ms.
+  2. Verify the preview tooltip appears:
+     - The cover artwork is visible (not blank or "No Cover Extracted" when a valid cover exists).
+     - The tooltip image is compactly sized (height ~180px, width ~140px, container max ~180px) and does not dominate or occlude the majority of the window.
+     - Filename and image dimensions/format are neatly formatted underneath the cover image.
+  3. Once scraper results return, hover over the `Remote Cover` thumbnail:
+     - Verify the remote cover tooltip is similarly compact (~180px height).
+- [ ] **Step 3 (Verify Scraper Match & Series Search Wizard Hover Previews):**
+  1. Open manual Scraper Match Window or Series Search Wizard Window.
+  2. Hover over candidate cover images and verify the popover preview is cleanly scaled (~200px max height) with a 400ms delay.
+
+* **Expected Result:** Cover hover tooltips appear smoothly without accidental triggering during cursor movement, load artwork reliably, and maintain a compact footprint that preserves visibility of the queue rows.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #38]: Library Health Dashboard & Navigation Rail Verification
 * **Branch / Commit:** `feat/issue-38-library-health-dashboard`
 * **Date Added:** 2026-11-19

@@ -498,6 +498,8 @@ public class BulkScrapeTests
             Assert.NotEqual(0UL, queue1[0].LocalCoverHash);
             Assert.Null(queue1[0].LocalCoverBytes);
             Assert.Null(queue1[0].TrueCoverBytes);
+            Assert.NotNull(queue1[0].LocalThumbnailBytes);
+            Assert.NotEmpty(queue1[0].LocalThumbnailBytes!);
 
             // 2. Process with DiscardCoverBytesAfterHash = false
             var queue2 = queueService.CreateQueue(new[] { cbz2 });
@@ -510,11 +512,28 @@ public class BulkScrapeTests
             Assert.NotEqual(0UL, queue2[0].LocalCoverHash);
             Assert.NotNull(queue2[0].LocalCoverBytes);
             Assert.NotEmpty(queue2[0].LocalCoverBytes!);
+            Assert.NotNull(queue2[0].LocalThumbnailBytes);
+            Assert.NotEmpty(queue2[0].LocalThumbnailBytes!);
         }
         finally
         {
             if (File.Exists(cbz1)) File.Delete(cbz1);
             if (File.Exists(cbz2)) File.Delete(cbz2);
         }
+    }
+
+    [Fact]
+    public void BulkScrapeQueueItem_HoldsThumbnailBytes_EvenWithoutFullCoverBytes()
+    {
+        var item = new BulkScrapeQueueItem
+        {
+            FilePath = "test.cbz",
+            LocalCoverBytes = null,
+            LocalThumbnailBytes = new byte[] { 1, 2, 3 }
+        };
+
+        Assert.Null(item.LocalCoverBytes);
+        Assert.NotNull(item.LocalThumbnailBytes);
+        Assert.Equal(3, item.LocalThumbnailBytes.Length);
     }
 }

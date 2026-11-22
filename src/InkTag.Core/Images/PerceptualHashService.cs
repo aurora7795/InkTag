@@ -165,4 +165,62 @@ public static class PerceptualHashService
     {
         return CalculateSimilarity(hashA, hashB) >= threshold;
     }
+
+    /// <summary>
+    /// Creates a lightweight downscaled JPEG thumbnail byte array (max dimension default 240px)
+    /// suitable for memory-efficient GUI queue display.
+    /// </summary>
+    public static byte[]? CreateThumbnail(byte[]? imageBytes, int maxDimension = 240)
+    {
+        if (imageBytes == null || imageBytes.Length == 0) return null;
+        using var ms = new MemoryStream(imageBytes);
+        return CreateThumbnail(ms, maxDimension);
+    }
+
+    /// <summary>
+    /// Creates a lightweight downscaled JPEG thumbnail byte array (max dimension default 240px)
+    /// suitable for memory-efficient GUI queue display.
+    /// </summary>
+    public static byte[]? CreateThumbnail(Stream? imageStream, int maxDimension = 240)
+    {
+        if (imageStream == null || !imageStream.CanRead) return null;
+
+        try
+        {
+            using var codec = SKCodec.Create(imageStream);
+            if (codec == null) return null;
+
+            int width = codec.Info.Width;
+            int height = codec.Info.Height;
+            if (width <= 0 || height <= 0) return null;
+
+            if ((long)width * height > MaxPixelCount) return null;
+
+            using var original = SKBitmap.Decode(codec);
+            if (original == null) return null;
+
+            if (width <= maxDimension && height <= maxDimension)
+            {
+                using var origImg = SKImage.FromBitmap(original);
+                using var origData = origImg.Encode(SKEncodedImageFormat.Jpeg, 80);
+                return origData.ToArray();
+            }
+
+            float scale = Math.Min((float)maxDimension / width, (float)maxDimension / height);
+            int newWidth = Math.Max(1, (int)(width * scale));
+            int newHeight = Math.Max(1, (int)(height * scale));
+
+            using var resized = original.Resize(new SKImageInfo(newWidth, newHeight), new SKSamplingOptions(SKFilterMode.Linear));
+            if (resized == null) return null;
+
+            using var image = SKImage.FromBitmap(resized);
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 80);
+            return data.ToArray();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.LogWarning($"Thumbnail generation failed: {ex.Message}");
+            return null;
+        }
+    }
 }
