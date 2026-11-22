@@ -95,6 +95,14 @@
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
 
+    <!-- Prevent window managers (e.g. Linux KWin/picom) from drawing oversized native window drop shadows/blur behind popups -->
+    <Style Selector="Popup">
+      <Setter Property="WindowManagerAddShadowHint" Value="False"/>
+    </Style>
+    <Style Selector="ContextMenu">
+      <Setter Property="WindowManagerAddShadowHint" Value="False"/>
+    </Style>
+
     <!-- Neutral Outline Toolbar Button Style -->
     <Style Selector="Button.outline">
       <Setter Property="Background" Value="{DynamicResource AppButtonOutlineBackgroundBrush}"/>

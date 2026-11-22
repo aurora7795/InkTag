@@ -17,6 +17,36 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
+* **Branch / Commit:** `fix/issue-48-linux-contextmenu-blur-box`
+* **Date Added:** 2026-11-22
+* **Target Subsystems:** `InkTag.Gui` (`Program.cs`, `App.axaml`, `MainWindow.axaml`, `BulkScrapeQueueWindow.axaml`)
+* **Environment / OS:** Linux (X11 / KDE Plasma / XFCE / GNOME) & Cross-platform (macOS, Windows)
+* **Goal:** Verify that right-clicking in the DataGrid table opens the context menu cleanly without any oversized dark blurred background box or compositor window shadow artifacts.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Context Menu on Linux):**
+  1. Launch InkTag GUI on Linux (`dotnet run --project src/InkTag.Gui/InkTag.Gui.csproj`).
+  2. Open a folder containing comics so that the Library Grid populates.
+  3. Right-click on any comic row in the DataGrid to open the context menu.
+  4. Verify that the context menu appears cleanly directly beneath/at the cursor:
+     - The menu items (Auto-Tag, Series Wizard, Bulk Auto-Tag, etc.) are visible and styled properly.
+     - There is NO oversized dark blurred box extending behind or around the context menu.
+     - No extraneous window-manager drop-shadow rectangles appear.
+- [ ] **Step 2 (Verify Context Menu in Bulk Scrape Queue):**
+  1. Open the Bulk Auto-Tag Queue window (`BulkScrapeQueueWindow`).
+  2. Right-click on an item in the queue table.
+  3. Verify that the context menu (Include, Exclude, Tweak Match, etc.) renders cleanly without background blur boxes or clipping.
+- [ ] **Step 3 (Verify Non-Linux Regression Testing):**
+  1. Run the application on Windows or macOS.
+  2. Verify that context menus and flyout popups continue to open and behave normally.
+
+* **Expected Result:** Context menus and popups render sharply without large blurred box artifacts or compositor shadow glitches on Linux.
+* **Tester Notes:**
+  <!-- Record manual test observations here -->
+
+---
+
 ### [Issue #47]: Cover Hover Preview Sizing and Show Delay Verification
 * **Branch / Commit:** `fix/issue-47-hover-cover-preview`
 * **Date Added:** 2026-11-22
