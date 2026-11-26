@@ -17,6 +17,28 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issues #54 & #56]: MCP & Core Security Hardening Verification
+* **Branch / Commit:** `fix/issue-54-56-security-hardening`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Mcp` (`ComicTools.cs`), `InkTag.Core` (`ArchiveSecurity.cs`, `AppLogger.cs`, `AppSettings.cs`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify MCP read-only/workspace boundary enforcement, Komga connection check without credential leakage, and OS file manager opening of the log folder.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `OpenLogFolder` via GUI/CLI):**
+  1. Launch InkTag GUI and trigger "Open Log Folder" (e.g., from Settings or Help).
+  2. Verify the OS file manager opens and highlights/shows the log file cleanly without shell errors.
+- [ ] **Step 2 (Verify MCP `--read-only` & `INKTAG_ALLOWED_ROOT_PATHS`):**
+  1. Start `InkTag.Mcp` with `--read-only` and `INKTAG_ALLOWED_ROOT_PATHS` pointing to a test comic directory.
+  2. Verify `ExtractCoverImage` with `outputPath` is blocked, while `ExtractCoverImage` with `returnBase64: true` and no `outputPath` succeeds without leaving temp files on disk.
+  3. Verify `SyncKomgaBookOrSeries` is blocked in read-only mode.
+- [ ] **Step 3 (Verify `settings.json` POSIX Permissions on macOS/Linux):**
+  1. Save settings in InkTag GUI and run `ls -l ~/.config/InkTag/settings.json` (or platform config dir).
+  2. Verify permissions are `-rw-------` (`0600`).
+
+* **Expected Result:** All boundary, read-only, and file-permission checks hold without regressions to normal workflows.
+* **Tester Notes:**
+
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
 * **Branch / Commit:** `fix/issue-48-linux-contextmenu-blur-box`
 * **Date Added:** 2026-11-22

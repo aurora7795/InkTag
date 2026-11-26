@@ -43,10 +43,44 @@ public static class ComicTools
     /// </summary>
     public static void ValidatePathAccess(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException("Path cannot be null, empty, or whitespace.", nameof(path));
+        }
 
-        string fullPath = Path.GetFullPath(path);
-        
+        if (!IsPathAllowed(path))
+        {
+            throw new UnauthorizedAccessException($"Access denied: The path '{path}' is outside the allowed directories.");
+        }
+    }
+
+    private static bool IsPathAllowed(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        string fullPath = InkTag.Core.IO.ArchiveSecurity.ResolveRealPath(path);
+        var allowedRoots = GetAllowedRoots();
+
+        foreach (var root in allowedRoots)
+        {
+            string fullRoot = InkTag.Core.IO.ArchiveSecurity.ResolveRealPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (fullPath.Equals(fullRoot, StringComparison.OrdinalIgnoreCase) ||
+                fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                fullPath.StartsWith(fullRoot + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static List<string> GetAllowedRoots()
+    {
         List<string> allowedRoots;
         if (AllowedRootsOverride != null)
         {
@@ -78,23 +112,34 @@ public static class ComicTools
             if (!string.IsNullOrEmpty(tempDir)) allowedRoots.Add(tempDir);
         }
 
-        bool isAllowed = false;
-        foreach (var root in allowedRoots)
+        return allowedRoots;
+    }
+
+    private static bool IsDisallowedMetadataHost(Uri uri)
+    {
+        string host = uri.DnsSafeHost;
+        if (string.IsNullOrEmpty(host))
         {
-            string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (fullPath.Equals(fullRoot, StringComparison.OrdinalIgnoreCase) ||
-                fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                fullPath.StartsWith(fullRoot + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return true;
+        }
+
+        if (host.Equals("metadata.google.internal", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("169.254.169.254", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (System.Net.IPAddress.TryParse(host, out var ip))
+        {
+            byte[] bytes = ip.GetAddressBytes();
+            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                bytes[0] == 169 && bytes[1] == 254)
             {
-                isAllowed = true;
-                break;
+                return true;
             }
         }
 
-        if (!isAllowed)
-        {
-            throw new UnauthorizedAccessException($"Access denied: The path '{path}' is outside the allowed directories ({string.Join(", ", allowedRoots)}).");
-        }
+        return false;
     }
 
     [McpServerTool, Description("Reads XML metadata embedded in a CBZ or CBR archive and returns it as JSON.")]
@@ -155,45 +200,70 @@ public static class ComicTools
         [Description("If true, returns base64 encoded image bytes")] bool returnBase64 = false)
     {
         ValidatePathAccess(path);
-        if (!string.IsNullOrEmpty(outputPath))
+        bool hasExplicitOutputPath = !string.IsNullOrEmpty(outputPath);
+        if (hasExplicitOutputPath)
         {
-            ValidatePathAccess(outputPath);
+            EnsureWriteAccess("ExtractCoverImage");
+            ValidatePathAccess(outputPath!);
+        }
+        else if (!returnBase64)
+        {
+            EnsureWriteAccess("ExtractCoverImage");
         }
 
+        bool isEphemeralTempFile = false;
         if (string.IsNullOrEmpty(outputPath))
         {
             string suffix = pageIndex > 0 ? $"_page{pageIndex + 1}.jpg" : "_cover.jpg";
             outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{suffix}");
-        }
-
-        string? extracted = _editor.ExtractCoverImage(path, outputPath, pageIndex);
-        if (extracted == null || !File.Exists(extracted))
-        {
-            throw new InvalidOperationException($"Failed to extract image at page index {pageIndex}.");
-        }
-
-        if (returnBase64)
-        {
-            byte[] bytes = File.ReadAllBytes(extracted);
-            string b64 = Convert.ToBase64String(bytes);
-            string mime = extracted.EndsWith(".png") ? "image/png" : "image/jpeg";
-
-            return new
+            if (!returnBase64)
             {
-                content = new object[]
-                {
-                    new { type = "text", text = $"Page {pageIndex + 1} extracted to {extracted}" },
-                    new
-                    {
-                        type = "image",
-                        data = b64,
-                        mimeType = mime
-                    }
-                }
-            };
+                ValidatePathAccess(outputPath);
+            }
+            else
+            {
+                isEphemeralTempFile = true;
+            }
         }
 
-        return $"Cover image extracted to: {extracted}";
+        try
+        {
+            string? extracted = _editor.ExtractCoverImage(path, outputPath, pageIndex);
+            if (extracted == null || !File.Exists(extracted))
+            {
+                throw new InvalidOperationException($"Failed to extract image at page index {pageIndex}.");
+            }
+
+            if (returnBase64)
+            {
+                byte[] bytes = File.ReadAllBytes(extracted);
+                string b64 = Convert.ToBase64String(bytes);
+                string mime = extracted.EndsWith(".png") ? "image/png" : "image/jpeg";
+
+                return new
+                {
+                    content = new object[]
+                    {
+                        new { type = "text", text = isEphemeralTempFile ? $"Page {pageIndex + 1} extracted (in-memory)" : $"Page {pageIndex + 1} extracted to {extracted}" },
+                        new
+                        {
+                            type = "image",
+                            data = b64,
+                            mimeType = mime
+                        }
+                    }
+                };
+            }
+
+            return $"Cover image extracted to: {extracted}";
+        }
+        finally
+        {
+            if (isEphemeralTempFile && File.Exists(outputPath))
+            {
+                try { File.Delete(outputPath); } catch { }
+            }
+        }
     }
 
     [McpServerTool, Description("Removes a specific page (or provider title/intro page at index 0) from a comic archive. Defaults to dryRun=true (preview only). Set dryRun=false to commit the removal.")]
@@ -540,12 +610,20 @@ public static class ComicTools
         [Description("Optional Komga server URL override (e.g. http://localhost:25600)")] string? serverUrl = null,
         [Description("Optional Komga API key override")] string? apiKey = null)
     {
-        string url = !string.IsNullOrWhiteSpace(serverUrl) 
-            ? serverUrl 
-            : _settingsService.GetEffectiveKomgaServerUrl();
-        string key = !string.IsNullOrWhiteSpace(apiKey) 
-            ? apiKey 
-            : _settingsService.GetEffectiveKomgaApiKey();
+        string configuredUrl = _settingsService.GetEffectiveKomgaServerUrl();
+        bool isUrlOverridden = !string.IsNullOrWhiteSpace(serverUrl) &&
+            !string.Equals(serverUrl.TrimEnd('/'), configuredUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+
+        string url = !string.IsNullOrWhiteSpace(serverUrl)
+            ? serverUrl
+            : configuredUrl;
+
+        // Never forward stored Komga credentials to an untrusted serverUrl override.
+        string key = !string.IsNullOrWhiteSpace(apiKey)
+            ? apiKey
+            : (isUrlOverridden ? string.Empty : _settingsService.GetEffectiveKomgaApiKey());
+        string user = isUrlOverridden ? string.Empty : _settingsService.GetEffectiveKomgaUser();
+        string password = isUrlOverridden ? string.Empty : _settingsService.GetEffectiveKomgaPassword();
 
         if (string.IsNullOrWhiteSpace(url))
         {
@@ -556,7 +634,14 @@ public static class ComicTools
             }, new JsonSerializerOptions { WriteIndented = true });
         }
 
-        using var client = new InkTag.Core.Komga.KomgaClient(url, key, _settingsService.GetEffectiveKomgaUser(), _settingsService.GetEffectiveKomgaPassword());
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var parsedUri) ||
+            (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps) ||
+            IsDisallowedMetadataHost(parsedUri))
+        {
+            throw new ArgumentException($"Invalid or disallowed Komga server URL: '{url}'. Only http/https URLs to non-metadata hosts are permitted.", nameof(serverUrl));
+        }
+
+        using var client = new InkTag.Core.Komga.KomgaClient(url, key, user, password);
         bool connected = await client.TestConnectionAsync();
         var libraries = connected ? await client.GetLibrariesAsync() : Array.Empty<InkTag.Core.Komga.KomgaLibraryDto>();
 
@@ -581,6 +666,7 @@ public static class ComicTools
         [Description("Optional StoryArc name to sync into Komga Collections")] string? storyArc = null)
     {
         ValidatePathAccess(path);
+        EnsureWriteAccess("SyncKomgaBookOrSeries");
 
         var syncService = new InkTag.Core.Komga.KomgaSyncService(_settingsService);
         if (!syncService.IsConfigured)
@@ -678,7 +764,9 @@ public static class ComicTools
         }
 
         var backupService = new InkTag.Core.Backup.MetadataBackupService();
-        var backups = backupService.ListBackups(path, limit);
+        var backups = backupService.ListBackups(path, limit)
+            .Where(b => IsPathAllowed(b.ArchivePath))
+            .ToList();
 
         return JsonSerializer.Serialize(new
         {
@@ -729,7 +817,13 @@ public static class ComicTools
         [Description("Maximum number of batch records to return (default: 20)")] int limit = 20)
     {
         var backupService = new InkTag.Core.Backup.MetadataBackupService();
-        var batches = backupService.ListBatchJobs(limit);
+        var batches = backupService.ListBatchJobs(limit)
+            .Select(b => b with
+            {
+                AffectedFiles = b.AffectedFiles.Where(IsPathAllowed).ToList()
+            })
+            .Where(b => b.AffectedFiles.Count > 0)
+            .ToList();
 
         return JsonSerializer.Serialize(new
         {
@@ -752,6 +846,12 @@ public static class ComicTools
         EnsureWriteAccess("RestoreBatchJob");
 
         var backupService = new InkTag.Core.Backup.MetadataBackupService();
+        var affectedPaths = backupService.GetBatchJobAffectedPaths(batchJobId);
+        foreach (var affectedPath in affectedPaths)
+        {
+            ValidatePathAccess(affectedPath);
+        }
+
         var report = backupService.RestoreBatchJob(batchJobId);
 
         return JsonSerializer.Serialize(new

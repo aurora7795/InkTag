@@ -163,14 +163,13 @@ public class AppSettingsService
             }
 
             string json = JsonSerializer.Serialize(Settings, JsonOptions);
-            IO.AtomicFile.WriteAllText(_settingsFilePath, json);
+            IO.AtomicFile.WriteAllText(_settingsFilePath, json, restrictToCurrentUser: true);
 
-            // Restrict file access to current user only on Unix systems (POSIX 0600 file, 0700 dir)
+            // Restrict directory access to current user only on Unix systems (POSIX 0700 dir)
             if (!OperatingSystem.IsWindows())
             {
                 try
                 {
-                    File.SetUnixFileMode(_settingsFilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
                     if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
                     {
                         File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
@@ -178,7 +177,7 @@ public class AppSettingsService
                 }
                 catch (Exception ex)
                 {
-                    Logging.AppLogger.LogWarning($"Failed to set restrictive Unix permissions on '{_settingsFilePath}': {ex.Message}");
+                    Logging.AppLogger.LogWarning($"Failed to set restrictive Unix permissions on '{dir}': {ex.Message}");
                 }
             }
         }

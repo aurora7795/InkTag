@@ -226,6 +226,14 @@ public static class ComicFileRenamer
             throw new FileNotFoundException("Original comic file not found.", originalFilePath);
         }
 
+        if (string.IsNullOrWhiteSpace(newFilename) ||
+            newFilename is "." or ".." ||
+            newFilename.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) >= 0 ||
+            !string.Equals(Path.GetFileName(newFilename), newFilename, StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"Invalid target filename '{newFilename}'. Path traversal and directory separators are not permitted.", nameof(newFilename));
+        }
+
         string dir = Path.GetDirectoryName(originalFilePath) ?? string.Empty;
         string targetPath = Path.Combine(dir, newFilename);
 

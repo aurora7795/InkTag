@@ -227,21 +227,37 @@ public static class AppLogger
 
             if (OperatingSystem.IsWindows())
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "explorer.exe",
-                    Arguments = File.Exists(logFile) ? $"/select,\"{logFile}\"" : $"\"{dir}\"",
-                    UseShellExecute = true
-                });
+                    UseShellExecute = false
+                };
+                if (File.Exists(logFile))
+                {
+                    psi.ArgumentList.Add($"/select,{logFile}");
+                }
+                else
+                {
+                    psi.ArgumentList.Add(dir);
+                }
+                System.Diagnostics.Process.Start(psi);
             }
             else if (OperatingSystem.IsMacOS())
             {
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "/usr/bin/open",
-                    Arguments = File.Exists(logFile) ? $"-R \"{logFile}\"" : $"\"{dir}\"",
                     UseShellExecute = false
                 };
+                if (File.Exists(logFile))
+                {
+                    psi.ArgumentList.Add("-R");
+                    psi.ArgumentList.Add(logFile);
+                }
+                else
+                {
+                    psi.ArgumentList.Add(dir);
+                }
                 System.Diagnostics.Process.Start(psi);
             }
             else // Linux & Unix
@@ -249,9 +265,9 @@ public static class AppLogger
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "xdg-open",
-                    Arguments = $"\"{dir}\"",
                     UseShellExecute = false
                 };
+                psi.ArgumentList.Add(dir);
                 System.Diagnostics.Process.Start(psi);
             }
         }

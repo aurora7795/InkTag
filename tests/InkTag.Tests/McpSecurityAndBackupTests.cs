@@ -222,4 +222,158 @@ public class McpSecurityAndBackupTests : IDisposable
             if (File.Exists(cbz)) File.Delete(cbz);
         }
     }
+
+    [Fact]
+    public void ValidatePathAccess_RejectsEmptyOrWhitespace_AndDoesNotLeakAllowedRoots()
+    {
+        Assert.Throws<ArgumentException>(() => ComicTools.ValidatePathAccess(""));
+        Assert.Throws<ArgumentException>(() => ComicTools.ValidatePathAccess("   "));
+
+        string secretRoot = Path.Combine(Path.GetTempPath(), "SecretAllowedRoot_" + Guid.NewGuid().ToString("N"));
+        ComicTools.AllowedRootsOverride = new List<string> { secretRoot };
+
+        var ex = Assert.Throws<UnauthorizedAccessException>(() =>
+            ComicTools.ValidatePathAccess(Path.Combine(Path.GetTempPath(), "other.cbz")));
+        Assert.DoesNotContain(secretRoot, ex.Message);
+    }
+
+    [Fact]
+    public void ValidatePathAccess_BlocksSymlinkEscapingAllowedRoot()
+    {
+        string allowedDir = Path.Combine(Path.GetTempPath(), "InkTagAllowed_" + Guid.NewGuid().ToString("N"));
+        string outsideFile = Path.Combine(Path.GetTempPath(), "InkTagOutside_" + Guid.NewGuid().ToString("N") + ".txt");
+        Directory.CreateDirectory(allowedDir);
+        File.WriteAllText(outsideFile, "secret");
+
+        string symlinkPath = Path.Combine(allowedDir, "escape.txt");
+        try
+        {
+            File.CreateSymbolicLink(symlinkPath, outsideFile);
+            ComicTools.AllowedRootsOverride = new List<string> { allowedDir };
+
+            Assert.Throws<UnauthorizedAccessException>(() => ComicTools.ValidatePathAccess(symlinkPath));
+        }
+        catch (UnauthorizedAccessException) when (OperatingSystem.IsWindows())
+        {
+            // Symlink creation on Windows without Developer Mode requires elevation; skip gracefully.
+        }
+        finally
+        {
+            if (File.Exists(symlinkPath)) File.Delete(symlinkPath);
+            if (Directory.Exists(allowedDir)) Directory.Delete(allowedDir, true);
+            if (File.Exists(outsideFile)) File.Delete(outsideFile);
+        }
+    }
+
+    [Fact]
+    public void ExtractCoverImage_ReadOnlyMode_BlocksDiskWrite_AndAllowsBase64InMemory()
+    {
+        string cbz = CreateTestCbz();
+        string outImg = Path.Combine(Path.GetTempPath(), $"out_{Guid.NewGuid():N}.jpg");
+        try
+        {
+            ComicTools.ReadOnlyOverride = true;
+
+            Assert.Throws<UnauthorizedAccessException>(() =>
+                ComicTools.ExtractCoverImage(cbz, pageIndex: 0, outputPath: outImg, returnBase64: false));
+            Assert.Throws<UnauthorizedAccessException>(() =>
+                ComicTools.ExtractCoverImage(cbz, pageIndex: 0, outputPath: null, returnBase64: false));
+
+            // In-memory vision inspection (no outputPath, returnBase64: true) must still work in read-only mode
+            var result = ComicTools.ExtractCoverImage(cbz, pageIndex: 0, outputPath: null, returnBase64: true);
+            Assert.NotNull(result);
+            Assert.False(File.Exists(outImg));
+        }
+        finally
+        {
+            ComicTools.ReadOnlyOverride = null;
+            if (File.Exists(cbz)) File.Delete(cbz);
+            if (File.Exists(outImg)) File.Delete(outImg);
+        }
+    }
+
+    [Fact]
+    public void RestoreBatchJob_ThrowsUnauthorizedAccessException_WhenAffectedFileOutsideAllowedRoots()
+    {
+        string allowedDir = Path.Combine(Path.GetTempPath(), "InkTagAllowedBatch_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(allowedDir);
+        string cbzOutside = CreateTestCbz();
+        try
+        {
+            var backupService = new MetadataBackupService(_testBackupDir);
+            string batchId = "batch_sec_test_" + Guid.NewGuid().ToString("N");
+            backupService.CreateBackup(cbzOutside, "<ComicInfo/>", "Test", batchJobId: batchId);
+
+            ComicTools.AllowedRootsOverride = new List<string> { allowedDir };
+
+            // ListBatchJobs must not leak the outside file
+            string listJson = ComicTools.ListBatchJobs();
+            Assert.DoesNotContain(Path.GetFileName(cbzOutside), listJson);
+
+            // RestoreBatchJob must reject restoring files outside allowed roots
+            Assert.Throws<UnauthorizedAccessException>(() => ComicTools.RestoreBatchJob(batchId));
+        }
+        finally
+        {
+            if (Directory.Exists(allowedDir)) Directory.Delete(allowedDir, true);
+            if (File.Exists(cbzOutside)) File.Delete(cbzOutside);
+        }
+    }
+
+    [Fact]
+    public void ListMetadataBackups_FiltersOutBackupsOutsideAllowedRoots()
+    {
+        string allowedDir = Path.Combine(Path.GetTempPath(), "InkTagAllowedList_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(allowedDir);
+        string cbzOutside = CreateTestCbz();
+        try
+        {
+            var backupService = new MetadataBackupService(_testBackupDir);
+            backupService.CreateBackup(cbzOutside, "<ComicInfo/>", "Test");
+
+            ComicTools.AllowedRootsOverride = new List<string> { allowedDir };
+            string json = ComicTools.ListMetadataBackups();
+            Assert.DoesNotContain(Path.GetFileName(cbzOutside), json);
+        }
+        finally
+        {
+            if (Directory.Exists(allowedDir)) Directory.Delete(allowedDir, true);
+            if (File.Exists(cbzOutside)) File.Delete(cbzOutside);
+        }
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CheckKomgaServer_RejectsMetadataIpAndDisallowedScheme()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            ComicTools.CheckKomgaServer(serverUrl: "http://169.254.169.254/latest/meta-data/"));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            ComicTools.CheckKomgaServer(serverUrl: "file:///etc/passwd"));
+    }
+
+    [Fact]
+    public void ComicFileRenamer_RenameFile_RejectsPathTraversal()
+    {
+        string cbz = CreateTestCbz();
+        try
+        {
+            Assert.Throws<ArgumentException>(() =>
+                InkTag.Core.Renaming.ComicFileRenamer.RenameFile(cbz, "../escaped.cbz"));
+            Assert.Throws<ArgumentException>(() =>
+                InkTag.Core.Renaming.ComicFileRenamer.RenameFile(cbz, "sub/escaped.cbz"));
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
+
+    [Fact]
+    public void ArchiveSecurity_CopyStreamWithLimit_ThrowsWhenExceeded()
+    {
+        using var src = new MemoryStream(new byte[1024]);
+        using var dst = new MemoryStream();
+        Assert.Throws<InvalidDataException>(() =>
+            InkTag.Core.IO.ArchiveSecurity.CopyStreamWithLimit(src, dst, 512, "page1.jpg", "test.cbz"));
+    }
 }

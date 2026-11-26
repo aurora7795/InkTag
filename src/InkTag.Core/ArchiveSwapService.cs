@@ -60,27 +60,7 @@ internal static class ArchiveSwapService
             cancellationToken.ThrowIfCancellationRequested();
 
             // 1. Extract the archive contents safely while preserving directory hierarchies
-            using (Stream stream = File.OpenRead(filePath))
-            using (var archive = ArchiveFactory.OpenArchive(stream))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
-                    {
-                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
-                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
-                    }
-
-                    if (!entry.IsDirectory)
-                    {
-                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
-                    }
-                }
-            }
-
-            // Verify all extracted files remain strictly contained within tempDir (Zip-Slip defense)
-            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
+            ArchiveSecurity.SafeExtractArchive(filePath, tempDir, cancellationToken);
 
             // 2. Find and deserialize / create ComicInfo.xml
             string? existingXmlFile = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
@@ -308,26 +288,7 @@ internal static class ArchiveSwapService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using (Stream stream = File.OpenRead(filePath))
-            using (var archive = ArchiveFactory.OpenArchive(stream))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
-                    {
-                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
-                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
-                    }
-
-                    if (!entry.IsDirectory)
-                    {
-                        entry.WriteToDirectory(tempDir, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
-                    }
-                }
-            }
-
-            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
+            ArchiveSecurity.SafeExtractArchive(filePath, tempDir, cancellationToken);
 
             string? existingXmlToClean = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories)
                 .FirstOrDefault(f => Path.GetFileName(f).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase));

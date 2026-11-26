@@ -80,7 +80,7 @@ internal static class ComicArchiveHandler
                     cancellationToken.ThrowIfCancellationRequested();
                     using var entryStream = entry.Open();
                     using var ms = new MemoryStream();
-                    entryStream.CopyTo(ms);
+                    ArchiveSecurity.CopyStreamWithLimit(entryStream, ms, ArchiveSecurity.MaxMetadataEntryBytes, entry.FullName, filePath);
                     ms.Position = 0;
                     var info = ComicInfoXmlSanitizer.DeserializeComicInfo(ms);
                     hasEmbeddedXml = true;
@@ -146,7 +146,7 @@ internal static class ComicArchiveHandler
                     {
                         using var entryStream = entry.Open();
                         using var ms = new MemoryStream();
-                        entryStream.CopyTo(ms);
+                        IO.ArchiveSecurity.CopyStreamWithLimit(entryStream, ms, IO.ArchiveSecurity.MaxMetadataEntryBytes, entry.FullName, filePath);
                         ms.Position = 0;
                         var info = ComicInfoXmlSanitizer.DeserializeComicInfo(ms);
                         hasEmbeddedXml = true;
@@ -385,7 +385,7 @@ internal static class ComicArchiveHandler
                     var targetEntry = imageEntries[pageIndex];
                     using var entryStream = targetEntry.Open();
                     using var ms = new MemoryStream();
-                    entryStream.CopyTo(ms);
+                    ArchiveSecurity.CopyStreamWithLimit(entryStream, ms, ArchiveSecurity.MaxSingleEntryBytes, targetEntry.FullName, filePath);
                     byte[] result = ms.ToArray();
                     AppLogger.LogDebug($"[ComicArchiveHandler] Extracted page {pageIndex} for '{fileName}' via fast seek ({targetEntry.FullName}, {result.Length} bytes) in {sw.ElapsedMilliseconds}ms.");
                     return result;
@@ -450,8 +450,9 @@ internal static class ComicArchiveHandler
             if (imageEntries.Count > pageIndex)
             {
                 var targetEntry = imageEntries[pageIndex];
+                using var entryStream = targetEntry.OpenEntryStream();
                 using var ms = new MemoryStream();
-                targetEntry.OpenEntryStream().CopyTo(ms);
+                ArchiveSecurity.CopyStreamWithLimit(entryStream, ms, ArchiveSecurity.MaxSingleEntryBytes, targetEntry.Key ?? string.Empty, filePath);
                 byte[] result = ms.ToArray();
                 AppLogger.LogDebug($"[ComicArchiveHandler] Extracted page {pageIndex} for '{fileName}' via SharpCompress fallback in {scSw.ElapsedMilliseconds}ms (Total: {sw.ElapsedMilliseconds}ms).");
                 return result;
@@ -528,26 +529,7 @@ internal static class ComicArchiveHandler
         try
         {
             // 1. Extract archive entries safely while preserving directory hierarchies
-            using (Stream stream = File.OpenRead(filePath))
-            using (var archive = ArchiveFactory.OpenArchive(stream))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    if (entry.Key != null && ArchiveSecurity.IsUnsafeEntryKey(entry.Key, tempDir))
-                    {
-                        var unsafeEx = new InvalidDataException($"Archive entry '{entry.Key}' contains invalid path traversal characters.");
-                        throw new UnsafeArchiveEntryException(unsafeEx.Message, entry.Key, filePath, unsafeEx);
-                    }
-
-                    if (!entry.IsDirectory)
-                    {
-                        entry.WriteToDirectory(tempDir, new SharpCompress.Common.ExtractionOptions { Overwrite = true, ExtractFullPath = true });
-                    }
-                }
-            }
-
-            // Zip-Slip defense
-            ArchiveSecurity.VerifyDirectoryContainment(tempDir, filePath);
+            ArchiveSecurity.SafeExtractArchive(filePath, tempDir);
 
             // 2. Identify sorted image files (including nested subdirectories)
             var imageFiles = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)

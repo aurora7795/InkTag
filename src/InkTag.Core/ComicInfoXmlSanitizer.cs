@@ -352,7 +352,9 @@ internal static class ComicInfoXmlSanitizer
 
         var settings = new XmlReaderSettings
         {
-            ValidationType = ValidationType.Schema
+            ValidationType = ValidationType.Schema,
+            DtdProcessing = DtdProcessing.Ignore,
+            XmlResolver = null
         };
         settings.Schemas.Add(null, schemaPath);
         settings.ValidationEventHandler += (sender, args) =>

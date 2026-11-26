@@ -18,7 +18,7 @@ public static class AtomicFile
     /// <param name="path">The destination file path.</param>
     /// <param name="content">The text content to write.</param>
     /// <param name="encoding">The character encoding to use (defaults to UTF-8 if null).</param>
-    public static void WriteAllText(string path, string content, Encoding? encoding = null)
+    public static void WriteAllText(string path, string content, Encoding? encoding = null, bool restrictToCurrentUser = false)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -37,6 +37,10 @@ public static class AtomicFile
         try
         {
             File.WriteAllText(tempPath, content, encoding);
+            if (restrictToCurrentUser && !OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(tempPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
             File.Move(tempPath, path, overwrite: true);
         }
         catch

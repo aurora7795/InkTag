@@ -256,7 +256,7 @@ public class MetadataBackupService
             var entry = manifest.FirstOrDefault(m => string.Equals(m.Id, backupId, StringComparison.OrdinalIgnoreCase));
             if (entry == null) return null;
 
-            string fullXmlPath = Path.Combine(BackupDirectory, entry.BackupXmlFileName);
+            string fullXmlPath = ResolveSafeBackupPath(entry.BackupXmlFileName);
             if (!File.Exists(fullXmlPath)) return null;
 
             return File.ReadAllText(fullXmlPath, Encoding.UTF8);
@@ -295,7 +295,7 @@ public class MetadataBackupService
             throw new InvalidOperationException($"No backup snapshot found for '{archivePath}'{(backupId != null ? $" with ID '{backupId}'" : "")}.");
         }
 
-        string backupXmlPath = Path.Combine(BackupDirectory, targetEntry.BackupXmlFileName);
+        string backupXmlPath = ResolveSafeBackupPath(targetEntry.BackupXmlFileName);
         if (!File.Exists(backupXmlPath))
         {
             throw new FileNotFoundException($"Backup snapshot file '{targetEntry.BackupXmlFileName}' was not found on disk.");
@@ -331,6 +331,45 @@ public class MetadataBackupService
 
             return batchGroups;
         }
+    }
+
+    /// <summary>
+    /// Returns all distinct archive file paths associated with the specified batch job ID.
+    /// </summary>
+    public List<string> GetBatchJobAffectedPaths(string batchJobId)
+    {
+        if (string.IsNullOrWhiteSpace(batchJobId))
+        {
+            return new List<string>();
+        }
+
+        lock (Lock)
+        {
+            var manifest = LoadManifestInternal();
+            return manifest
+                .Where(m => string.Equals(m.BatchJobId, batchJobId, StringComparison.OrdinalIgnoreCase))
+                .Select(m => m.ArchivePath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+
+    private string ResolveSafeBackupPath(string relativeOrFileName)
+    {
+        if (string.IsNullOrWhiteSpace(relativeOrFileName))
+        {
+            throw new InvalidDataException("Backup file path cannot be empty.");
+        }
+
+        string canonicalBackupDir = IO.ArchiveSecurity.ResolveRealPath(BackupDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        string candidate = IO.ArchiveSecurity.ResolveRealPath(Path.Combine(canonicalBackupDir, relativeOrFileName));
+        if (!candidate.StartsWith(canonicalBackupDir, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException($"Backup path '{relativeOrFileName}' escapes the backup directory.");
+        }
+
+        return candidate;
     }
 
     /// <summary>
@@ -378,7 +417,7 @@ public class MetadataBackupService
                     continue;
                 }
 
-                string backupXmlPath = Path.Combine(BackupDirectory, entry.BackupXmlFileName);
+                string backupXmlPath = ResolveSafeBackupPath(entry.BackupXmlFileName);
                 if (!File.Exists(backupXmlPath))
                 {
                     failures.Add((entry.ArchivePath, $"Backup snapshot file '{entry.BackupXmlFileName}' is missing."));
