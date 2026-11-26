@@ -222,4 +222,36 @@ public class McpSecurityAndBackupTests : IDisposable
             if (File.Exists(cbz)) File.Delete(cbz);
         }
     }
+
+    [Fact]
+    public void RemoveComicPage_DryRun_OutOfBoundsPageIndex_ReturnsSuccessFalse()
+    {
+        string cbz = CreateTestCbz();
+        try
+        {
+            string json = ComicTools.RemoveComicPage(cbz, pageIndex: 99, dryRun: true);
+            using var doc = JsonDocument.Parse(json);
+            Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
+            Assert.Equal(1, doc.RootElement.GetProperty("finalPageCount").GetInt32());
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ScrapeComicMetadata_InvalidMode_ThrowsArgumentException()
+    {
+        string cbz = CreateTestCbz();
+        try
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                ComicTools.ScrapeComicMetadata(cbz, mode: "invalid-mode"));
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
 }

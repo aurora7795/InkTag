@@ -17,6 +17,22 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #55]: MCP `ScrapeComicMetadata` Intro-Page Stripping & Async Cancellation
+* **Branch / Commit:** `fix/issue-55-mcp-strip-and-async`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Mcp` (`ComicTools.cs`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify `ScrapeComicMetadata` with `stripIntroPage: true` on a `.cbr` file writes metadata to the converted `.cbz` and records the post-strip cover hash.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `ScrapeComicMetadata` on `.cbr` with `stripIntroPage: true`):**
+  1. Connect an MCP client to `InkTag.Mcp` and invoke `ScrapeComicMetadata` on a `.cbr` comic with a provider intro page (`stripIntroPage: true`, `dryRun: false`).
+  2. Verify the `.cbr` is converted to `.cbz`, the intro page is removed, and the scraped `ComicInfo.xml` metadata is saved inside the `.cbz`.
+  3. Inspect `GetBackupProvenance` for the backup and verify `coverDHash` corresponds to the real cover (post-strip page 0).
+
+* **Expected Result:** Metadata is written to the converted `.cbz` and provenance reflects the true cover.
+* **Tester Notes:**
+
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
 * **Branch / Commit:** `fix/issue-48-linux-contextmenu-blur-box`
 * **Date Added:** 2026-11-22
