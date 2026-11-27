@@ -113,6 +113,20 @@ public partial class ComicItemViewModel : ObservableValidator
     [ObservableProperty]
     private string? _blackAndWhite;
 
+    public bool IsBlackAndWhite
+    {
+        get => string.Equals(BlackAndWhite, "Yes", StringComparison.OrdinalIgnoreCase);
+        set
+        {
+            string target = value ? "Yes" : "No";
+            if (!string.Equals(BlackAndWhite, target, StringComparison.OrdinalIgnoreCase))
+            {
+                BlackAndWhite = target;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     [ObservableProperty]
     private MangaDirection? _mangaDirection;
 

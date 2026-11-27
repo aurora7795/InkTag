@@ -128,6 +128,19 @@ This file is the living ledger for tracking manual quality assurance activities,
   2. Verify exit code is `1` and the error message is printed to `stderr` (not `stdout`).
 
 * **Expected Result:** Failed operations exit with non-zero status and keep `stdout` clean.
+### [Issue #53]: XAML Bindings, Modal Dialogs, & Update Status
+* **Branch / Commit:** `fix/issue-53-gui-bindings-and-update-fallback`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Gui` (`MainWindow.axaml`, `ScraperMatchWindow.axaml`, `App.axaml.cs`, `UpdateService.cs`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify `Ctrl+A`/`Cmd+A` selects all rows, `Black & White` and `Bulk Manga` checkboxes toggle cleanly, and `ScraperMatchWindow` displays `MATCH` badge without binding errors.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `Ctrl+A`/`Cmd+A` & Inspector/Bulk Checkboxes):**
+  1. Open a folder in InkTag GUI, press `Ctrl+A` (`Cmd+A` on macOS), and verify all rows are selected.
+  2. Toggle `Black & White` in the Inspector and `Set Manga Direction` -> `Manga (Right-to-Left)` in Bulk Tools; verify both mark/apply cleanly.
+
+* **Expected Result:** No Avalonia binding errors in debug output and all controls update state as expected.
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
