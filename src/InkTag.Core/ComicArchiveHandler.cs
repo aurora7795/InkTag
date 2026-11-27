@@ -313,9 +313,9 @@ internal static class ComicArchiveHandler
                 using var stream = OpenReadOptimized(filePath);
                 using var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
                 return zip.Entries
-                    .Where(e => !e.FullName.EndsWith('/') && IsImageFileName(e.FullName) && !IsIgnoredSystemEntry(e.FullName))
+                    .Where(e => !e.FullName.EndsWith('/') && !e.FullName.EndsWith('\\') && IsImageFileName(e.FullName) && !IsIgnoredSystemEntry(e.FullName))
                     .Select(e => e.FullName)
-                    .OrderBy(name => Path.GetFileName(name), NaturalStringComparer.OrdinalIgnoreCase)
+                    .OrderBy(name => name.Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                     .ToList();
             }
             catch (Exception ex)
@@ -331,7 +331,7 @@ internal static class ComicArchiveHandler
             return archive.Entries
                 .Where(e => !e.IsDirectory && e.Key != null && IsImageFileName(e.Key) && !IsIgnoredSystemEntry(e.Key))
                 .Select(e => e.Key!)
-                .OrderBy(name => Path.GetFileName(name), NaturalStringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name.Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
         catch (Exception ex)
@@ -376,8 +376,8 @@ internal static class ComicArchiveHandler
                 using var stream = OpenReadOptimized(filePath);
                 using var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
                 var imageEntries = zip.Entries
-                    .Where(e => !e.FullName.EndsWith('/') && IsImageFileName(e.FullName) && !IsIgnoredSystemEntry(e.FullName))
-                    .OrderBy(e => Path.GetFileName(e.FullName), NaturalStringComparer.OrdinalIgnoreCase)
+                    .Where(e => !e.FullName.EndsWith('/') && !e.FullName.EndsWith('\\') && IsImageFileName(e.FullName) && !IsIgnoredSystemEntry(e.FullName))
+                    .OrderBy(e => e.FullName.Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                     .ToList();
 
                 if (imageEntries.Count > pageIndex)
@@ -408,7 +408,7 @@ internal static class ComicArchiveHandler
                 var collected = new List<(string Name, byte[] Bytes)>();
                 foreach (var entry in zip.Entries)
                 {
-                    if (!entry.FullName.EndsWith('/') && IsImageFileName(entry.FullName) && !IsIgnoredSystemEntry(entry.FullName))
+                    if (!entry.FullName.EndsWith('/') && !entry.FullName.EndsWith('\\') && IsImageFileName(entry.FullName) && !IsIgnoredSystemEntry(entry.FullName))
                     {
                         using var entryStream = entry.Open();
                         using var ms = new MemoryStream();
@@ -420,7 +420,7 @@ internal static class ComicArchiveHandler
                 if (collected.Count > 0)
                 {
                     var sorted = collected
-                        .OrderBy(c => Path.GetFileName(c.Name), NaturalStringComparer.OrdinalIgnoreCase)
+                        .OrderBy(c => c.Name.Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                         .ToList();
 
                     if (sorted.Count > pageIndex)
@@ -444,7 +444,7 @@ internal static class ComicArchiveHandler
 
             var imageEntries = archive.Entries
                 .Where(e => !e.IsDirectory && e.Key != null && IsImageFileName(e.Key) && !IsIgnoredSystemEntry(e.Key))
-                .OrderBy(e => Path.GetFileName(e.Key!), NaturalStringComparer.OrdinalIgnoreCase)
+                .OrderBy(e => e.Key!.Replace('\\', '/'), NaturalStringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             if (imageEntries.Count > pageIndex)
@@ -525,6 +525,11 @@ internal static class ComicArchiveHandler
         string targetPath = originalExtension.Equals(".cbr", StringComparison.OrdinalIgnoreCase)
             ? Path.ChangeExtension(filePath, ".cbz")
             : filePath;
+
+        if (!targetPath.Equals(filePath, StringComparison.OrdinalIgnoreCase) && File.Exists(targetPath))
+        {
+            throw new IOException($"Cannot convert '{Path.GetFileName(filePath)}' to CBZ because '{Path.GetFileName(targetPath)}' already exists on disk.");
+        }
 
         try
         {
@@ -646,6 +651,10 @@ internal static class ComicArchiveHandler
             }
 
             // Write updated ComicInfo.xml
+            if (File.Exists(xmlPath))
+            {
+                File.SetAttributes(xmlPath, File.GetAttributes(xmlPath) & ~FileAttributes.ReadOnly);
+            }
             using (var fs = new FileStream(xmlPath, FileMode.Create, FileAccess.Write))
             {
                 ComicInfoXmlSanitizer.SerializeComicInfo(comicInfo, fs);

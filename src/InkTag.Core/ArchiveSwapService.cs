@@ -55,6 +55,11 @@ internal static class ArchiveSwapService
             ? Path.ChangeExtension(filePath, ".cbz") 
             : filePath;
 
+        if (!targetPath.Equals(filePath, StringComparison.OrdinalIgnoreCase) && File.Exists(targetPath))
+        {
+            throw new IOException($"Cannot convert '{Path.GetFileName(filePath)}' to CBZ because '{Path.GetFileName(targetPath)}' already exists on disk.");
+        }
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -142,6 +147,10 @@ internal static class ArchiveSwapService
 
             // Serialize back to clean XML in root of temp directory
             string xmlPath = Path.Combine(tempDir, "ComicInfo.xml");
+            if (File.Exists(xmlPath))
+            {
+                File.SetAttributes(xmlPath, File.GetAttributes(xmlPath) & ~FileAttributes.ReadOnly);
+            }
             using (FileStream fs = new FileStream(xmlPath, FileMode.Create, FileAccess.Write))
             {
                 ComicInfoXmlSanitizer.SerializeComicInfo(comicInfo, fs);
@@ -365,6 +374,11 @@ internal static class ArchiveSwapService
         string targetPath = originalExtension.Equals(".cbr", StringComparison.OrdinalIgnoreCase) 
             ? Path.ChangeExtension(filePath, ".cbz") 
             : filePath;
+
+        if (!targetPath.Equals(filePath, StringComparison.OrdinalIgnoreCase) && File.Exists(targetPath))
+        {
+            throw new IOException($"Cannot convert '{Path.GetFileName(filePath)}' to CBZ because '{Path.GetFileName(targetPath)}' already exists on disk.");
+        }
 
         string tempCbzPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cbz.tmp");
         string? backupOriginalPath = null;

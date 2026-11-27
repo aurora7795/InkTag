@@ -72,6 +72,23 @@ This file is the living ledger for tracking manual quality assurance activities,
   3. Inspect `GetBackupProvenance` for the backup and verify `coverDHash` corresponds to the real cover (post-strip page 0).
 
 * **Expected Result:** Metadata is written to the converted `.cbz` and provenance reflects the true cover.
+### [Issue #57]: CBR-to-CBZ Collision Protection & Nested Page Order
+* **Branch / Commit:** `fix/issue-57-core-cbr-and-xml-fixes`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Core` (`ArchiveSwapService`, `ComicArchiveHandler`, `MetadataEditor`, `ComicInfoXmlSanitizer`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify `.cbr` editing does not overwrite a sibling `.cbz` file and nested chapter archives strip/preview pages in consistent order.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `.cbr` + `.cbz` Sibling Collision Guard):**
+  1. Place both `Issue 1.cbr` and `Issue 1.cbz` in the same folder.
+  2. Attempt to edit/save metadata on `Issue 1.cbr`.
+  3. Verify InkTag reports an error instead of deleting `Issue 1.cbz`.
+- [ ] **Step 2 (Verify Nested Archive Page Ordering):**
+  1. Open a `.cbz` with chapter subdirectories (`ch1/001.jpg`, `ch2/001.jpg`) and strip page 0.
+  2. Verify `ch1/001.jpg` is removed rather than `ch2/001.jpg`.
+
+* **Expected Result:** Pre-existing `.cbz` files are protected from silent deletion and nested archive page ordering is consistent.
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification

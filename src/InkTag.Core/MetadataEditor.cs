@@ -413,6 +413,9 @@ public class MetadataEditor
         if (underlyingType == typeof(double))
             return element.GetDouble();
 
+        if (underlyingType == typeof(decimal))
+            return element.GetDecimal();
+
         if (underlyingType.IsEnum)
         {
             if (element.ValueKind == JsonValueKind.String)
@@ -427,7 +430,7 @@ public class MetadataEditor
     private static string GetJsonTypeName(Type type)
     {
         Type underlying = Nullable.GetUnderlyingType(type) ?? type;
-        if (underlying == typeof(int) || underlying == typeof(long) || underlying == typeof(double)) return "number";
+        if (underlying == typeof(int) || underlying == typeof(long) || underlying == typeof(double) || underlying == typeof(decimal)) return "number";
         if (underlying == typeof(bool)) return "boolean";
         return "string";
     }
