@@ -16,7 +16,7 @@ public class TaggingNotesTests
         Assert.False(string.IsNullOrWhiteSpace(ver));
         Assert.NotEqual("0.12.0", ver);
         Assert.NotEqual("dev", ver);
-        Assert.Equal("0.14.1", ver);
+        Assert.Equal("0.15.0", ver);
     }
 
     [Fact]

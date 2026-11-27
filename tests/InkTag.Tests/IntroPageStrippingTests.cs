@@ -19,6 +19,7 @@ using Xunit;
 
 namespace InkTag.Tests;
 
+[Collection("ProcessStateTests")]
 public class IntroPageStrippingTests : IDisposable
 {
     private readonly string _testDir;

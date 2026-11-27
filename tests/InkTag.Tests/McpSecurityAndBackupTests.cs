@@ -224,7 +224,6 @@ public class McpSecurityAndBackupTests : IDisposable
     }
 
     [Fact]
-<<<<<<< HEAD
     public void ValidatePathAccess_RejectsEmptyOrWhitespace_AndDoesNotLeakAllowedRoots()
     {
         Assert.Throws<ArgumentException>(() => ComicTools.ValidatePathAccess(""));

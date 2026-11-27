@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.15.0] - 2026-11-27
+
 ### Added
 - **Library Health Dashboard & Navigation Rail**: Implemented layout directions A and C (`docs/design/README.md`) in `InkTag.Gui`. Added an Overview Health Dashboard featuring 4 metric diagnostic tiles (% Tagged, Untagged, Modified, and Read/Archive Errors), a "Needs Attention" issue queue with direct row inspection, primary quick action shortcuts (Bulk Auto-Tag, Bulk Rename, Komga Sync), and recent batch job status with instant one-click rollback. Introduced a collapsible ~220px Library Navigation Rail with persistent smart lists and alphabetical browse hierarchy for Publishers and Series, allowing users to drill into specific series with one click and breadcrumb resets while preserving full 35-column spreadsheet editing and inspector capabilities. Resolves [#38](https://github.com/aurora7795/InkTag/issues/38).
 - **Atomic Batch Rollback & Redo Points**: Refactored `MetadataBackupService.RestoreBatchJob` from a sequential, best-effort loop into a two-phase atomic operation. Rollbacks execute pre-flight validation across all target archives and stage replacement CBZs in an isolated directory via `ArchiveSwapService.StageMetadataXml` before touching target archives. An on-disk recovery journal (`batch_rollback_<batchJobId>_<guid>.journal.json`) guards the swap phase with in-process rollback and automatic crash recovery (`RecoverPendingBatchJournals`) on startup. Completing a batch rollback automatically generates a redo point (`redo_<batchJobId>_<guid>`), exposed in MCP tool responses via `redoBatchJobId`, allowing users and AI agents to reverse rollbacks. Resolves [#21](https://github.com/aurora7795/InkTag/issues/21).
