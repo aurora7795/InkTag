@@ -274,6 +274,77 @@ public class KomgaClientTests
         Assert.Equal(1, report.CollectionsSynced);
         Assert.True(collectionCreated);
     }
+
+    [Fact]
+    public async Task KomgaClient_FindBookAndSeries_DoNotReturnBlindFirstElementFallback()
+    {
+        var mockHandler = new MockHttpMessageHandler
+        {
+            Handler = req =>
+            {
+                string url = req.RequestUri?.ToString() ?? "";
+                if (url.Contains("/api/v1/books"))
+                {
+                    var page = new KomgaPageWrapper<KomgaBookDto>
+                    {
+                        Content = new List<KomgaBookDto>
+                        {
+                            new KomgaBookDto { Id = "wrong-book", Name = "Unrelated Book", Url = "/data/other/Unrelated.cbz" }
+                        }
+                    };
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(page), System.Text.Encoding.UTF8, "application/json")
+                    };
+                }
+                if (url.Contains("/api/v1/series"))
+                {
+                    var page = new KomgaPageWrapper<KomgaSeriesDto>
+                    {
+                        Content = new List<KomgaSeriesDto>
+                        {
+                            new KomgaSeriesDto { Id = "wrong-series", Name = "Unrelated Series", Url = "/data/other" }
+                        }
+                    };
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(page), System.Text.Encoding.UTF8, "application/json")
+                    };
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+        };
+
+        using var httpClient = new HttpClient(mockHandler);
+        using var client = new KomgaClient("http://localhost:25600", apiKey: "test-token", httpClient: httpClient);
+
+        var book = await client.FindBookByFilePathAsync("/data/comics/Batman/001.cbz");
+        var series = await client.FindSeriesByPathOrNameAsync("/data/comics/Batman", "Batman");
+
+        Assert.Null(book);
+        Assert.Null(series);
+    }
+
+    [Fact]
+    public async Task KomgaClient_AnalyzeBookAsync_EscapesBookId()
+    {
+        string? capturedUrl = null;
+        var mockHandler = new MockHttpMessageHandler
+        {
+            Handler = req =>
+            {
+                capturedUrl = req.RequestUri?.AbsoluteUri;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+        };
+
+        using var httpClient = new HttpClient(mockHandler);
+        using var client = new KomgaClient("http://localhost:25600", apiKey: "test-token", httpClient: httpClient);
+
+        bool ok = await client.AnalyzeBookAsync("id/with spaces");
+        Assert.True(ok);
+        Assert.Equal("http://localhost:25600/api/v1/books/id%2Fwith%20spaces/analyze", capturedUrl);
+    }
 }
 
 [Collection("AppLogger")]

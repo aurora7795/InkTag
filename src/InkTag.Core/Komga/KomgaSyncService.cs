@@ -20,14 +20,16 @@ public class KomgaSyncReport
     public bool IsSuccess => Failures.Count == 0;
 }
 
-public class KomgaSyncService
+public class KomgaSyncService : IDisposable
 {
     private readonly KomgaClient _client;
     private readonly AppSettingsService _settingsService;
+    private readonly bool _ownsClient;
 
     public KomgaSyncService(AppSettingsService? settingsService = null, KomgaClient? client = null)
     {
         _settingsService = settingsService ?? new AppSettingsService();
+        _ownsClient = client == null;
         _client = client ?? new KomgaClient(_settingsService);
     }
 
@@ -59,31 +61,7 @@ public class KomgaSyncService
                 }
 
                 // StoryArc & SeriesGroup collection sync
-                if (_settingsService.Settings.KomgaSyncStoryArcsToCollections &&
-                    !string.IsNullOrWhiteSpace(book.SeriesId))
-                {
-                    var collectionNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    if (!string.IsNullOrWhiteSpace(comicInfo.StoryArc))
-                    {
-                        foreach (var arc in comicInfo.StoryArc.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                            collectionNames.Add(arc);
-                    }
-                    if (!string.IsNullOrWhiteSpace(comicInfo.SeriesGroup))
-                    {
-                        foreach (var group in comicInfo.SeriesGroup.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                            collectionNames.Add(group);
-                    }
-
-                    foreach (var colName in collectionNames)
-                    {
-                        bool colSynced = await _client.SyncStoryArcCollectionAsync(book.SeriesId, colName, ct);
-                        if (colSynced)
-                        {
-                            report.CollectionsSynced++;
-                            report.SuccessMessages.Add($"Added series to collection '{colName}'.");
-                        }
-                    }
-                }
+                await SyncCollectionsForSeriesAsync(book.SeriesId, comicInfo, report, ct);
             }
             else
             {
@@ -109,30 +87,7 @@ public class KomgaSyncService
                     }
 
                     // Also sync collections if present
-                    if (_settingsService.Settings.KomgaSyncStoryArcsToCollections && !string.IsNullOrWhiteSpace(series.Id))
-                    {
-                        var collectionNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        if (!string.IsNullOrWhiteSpace(comicInfo.StoryArc))
-                        {
-                            foreach (var arc in comicInfo.StoryArc.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                                collectionNames.Add(arc);
-                        }
-                        if (!string.IsNullOrWhiteSpace(comicInfo.SeriesGroup))
-                        {
-                            foreach (var group in comicInfo.SeriesGroup.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                                collectionNames.Add(group);
-                        }
-
-                        foreach (var colName in collectionNames)
-                        {
-                            bool colSynced = await _client.SyncStoryArcCollectionAsync(series.Id, colName, ct);
-                            if (colSynced)
-                            {
-                                report.CollectionsSynced++;
-                                report.SuccessMessages.Add($"Added series to collection '{colName}'.");
-                            }
-                        }
-                    }
+                    await SyncCollectionsForSeriesAsync(series.Id, comicInfo, report, ct);
                 }
                 else
                 {
@@ -174,5 +129,43 @@ public class KomgaSyncService
         }
 
         return totalReport;
+    }
+
+    private async Task SyncCollectionsForSeriesAsync(string? seriesId, ComicInfo comicInfo, KomgaSyncReport report, CancellationToken ct)
+    {
+        if (!_settingsService.Settings.KomgaSyncStoryArcsToCollections || string.IsNullOrWhiteSpace(seriesId))
+        {
+            return;
+        }
+
+        var collectionNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(comicInfo.StoryArc))
+        {
+            foreach (var arc in comicInfo.StoryArc.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                collectionNames.Add(arc);
+        }
+        if (!string.IsNullOrWhiteSpace(comicInfo.SeriesGroup))
+        {
+            foreach (var group in comicInfo.SeriesGroup.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                collectionNames.Add(group);
+        }
+
+        foreach (var colName in collectionNames)
+        {
+            bool colSynced = await _client.SyncStoryArcCollectionAsync(seriesId, colName, ct);
+            if (colSynced)
+            {
+                report.CollectionsSynced++;
+                report.SuccessMessages.Add($"Added series to collection '{colName}'.");
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_ownsClient)
+        {
+            _client.Dispose();
+        }
     }
 }

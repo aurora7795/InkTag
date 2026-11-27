@@ -272,7 +272,7 @@ public class KomgaClient : IDisposable
                     string.Equals(b.Name, fileNameWithoutExt, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(b.Name, fileName, StringComparison.OrdinalIgnoreCase));
 
-                return match ?? page.Content[0];
+                return match;
             }
         }
         catch (Exception ex)
@@ -305,7 +305,7 @@ public class KomgaClient : IDisposable
                     string.Equals(s.Url, translatedPath, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(s.Name, searchName, StringComparison.OrdinalIgnoreCase));
 
-                return match ?? page.Content[0];
+                return match;
             }
         }
         catch (Exception ex)
@@ -322,7 +322,7 @@ public class KomgaClient : IDisposable
 
         try
         {
-            string endpoint = $"{_serverUrl}/api/v1/books/{bookId}/analyze";
+            string endpoint = $"{_serverUrl}/api/v1/books/{Uri.EscapeDataString(bookId)}/analyze";
             using var response = await _httpClient.PostAsync(endpoint, null, ct);
             if (response.IsSuccessStatusCode)
             {
@@ -348,7 +348,7 @@ public class KomgaClient : IDisposable
 
         try
         {
-            string endpoint = $"{_serverUrl}/api/v1/series/{seriesId}/analyze";
+            string endpoint = $"{_serverUrl}/api/v1/series/{Uri.EscapeDataString(seriesId)}/analyze";
             using var response = await _httpClient.PostAsync(endpoint, null, ct);
             if (response.IsSuccessStatusCode)
             {
@@ -374,11 +374,11 @@ public class KomgaClient : IDisposable
 
         try
         {
-            string endpoint = $"{_serverUrl}/api/v1/series/{seriesId}/metadata";
+            string endpoint = $"{_serverUrl}/api/v1/series/{Uri.EscapeDataString(seriesId)}/metadata";
             var payload = new { status = status.ToUpperInvariant() };
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-            var request = new HttpRequestMessage(HttpMethod.Patch, endpoint) { Content = content };
+            using var request = new HttpRequestMessage(HttpMethod.Patch, endpoint) { Content = content };
             using var response = await _httpClient.SendAsync(request, ct);
             return response.IsSuccessStatusCode;
         }
@@ -404,11 +404,11 @@ public class KomgaClient : IDisposable
                 if (!existing.SeriesIds.Contains(seriesId, StringComparer.OrdinalIgnoreCase))
                 {
                     existing.SeriesIds.Add(seriesId);
-                    string patchEndpoint = $"{_serverUrl}/api/v1/collections/{existing.Id}";
+                    string patchEndpoint = $"{_serverUrl}/api/v1/collections/{Uri.EscapeDataString(existing.Id)}";
                     var payload = new { seriesIds = existing.SeriesIds };
-                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                    using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-                    var request = new HttpRequestMessage(HttpMethod.Patch, patchEndpoint) { Content = content };
+                    using var request = new HttpRequestMessage(HttpMethod.Patch, patchEndpoint) { Content = content };
                     using var response = await _httpClient.SendAsync(request, ct);
                     return response.IsSuccessStatusCode;
                 }
@@ -443,7 +443,7 @@ public class KomgaClient : IDisposable
             string endpoint = $"{_serverUrl}/api/v1/books?media_status=UNSUPPORTED,ERROR&size=100";
             if (!string.IsNullOrWhiteSpace(libraryId))
             {
-                endpoint += $"&library_id={libraryId}";
+                endpoint += $"&library_id={Uri.EscapeDataString(libraryId)}";
             }
 
             var page = await GetJsonSafeAsync<KomgaPageWrapper<KomgaBookDto>>(endpoint, ct);
