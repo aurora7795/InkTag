@@ -47,13 +47,14 @@ public static class CliApp
 
         // Explicit help check:
         if (effectiveArgs.Length == 0 ||
-            effectiveArgs.Any(a => a.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
-                                   a.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
-                                   a.Equals("help", StringComparison.OrdinalIgnoreCase)))
+            (effectiveArgs.Length <= 2 &&
+             (effectiveArgs[0].Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+              effectiveArgs[0].Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+              effectiveArgs[0].Equals("help", StringComparison.OrdinalIgnoreCase))))
         {
-            if (isJson)
+            if (isJson || effectiveArgs.Length == 0)
             {
-                PrintHelp(isJson: true, outWriter);
+                PrintHelp(isJson, outWriter);
                 return 0;
             }
         }
@@ -99,19 +100,10 @@ public static class CliApp
 
     private static string[] PreprocessArgs(string[] args)
     {
-        if (args.Length == 0) return args;
+        if (args.Length == 0 || args[0].StartsWith("-")) return args;
 
-        string? firstPositional = null;
-        for (int i = 0; i < args.Length; i++)
-        {
-            if (!args[i].StartsWith("-"))
-            {
-                firstPositional = args[i];
-                break;
-            }
-        }
-
-        if (firstPositional != null && !KnownCommands.Contains(firstPositional))
+        string firstPositional = args[0];
+        if (!KnownCommands.Contains(firstPositional))
         {
             if (File.Exists(firstPositional))
             {
