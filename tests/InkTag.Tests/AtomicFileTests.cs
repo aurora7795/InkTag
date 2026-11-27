@@ -102,7 +102,7 @@ public class AtomicFileTests : IDisposable
 
         Assert.Empty(backups);
         Assert.True(File.Exists(logPath));
-        string logContent = File.ReadAllText(logPath);
+        string logContent = ReadSharedLog(logPath);
         Assert.Contains("[WARN]", logContent);
         Assert.Contains("[MetadataBackupService] Failed to load manifest", logContent);
     }
@@ -120,8 +120,15 @@ public class AtomicFileTests : IDisposable
 
         Assert.Null(cacheService.Get("any_key", TimeSpan.FromDays(1)));
         Assert.True(File.Exists(logPath));
-        string logContent = File.ReadAllText(logPath);
+        string logContent = ReadSharedLog(logPath);
         Assert.Contains("[WARN]", logContent);
         Assert.Contains("[ScraperCacheService] Failed to load cache", logContent);
+    }
+
+    private static string ReadSharedLog(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var sr = new StreamReader(fs);
+        return sr.ReadToEnd();
     }
 }

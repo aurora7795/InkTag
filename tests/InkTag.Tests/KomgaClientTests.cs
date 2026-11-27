@@ -366,11 +366,12 @@ public class KomgaClientUrlSecurityTests
 
             Assert.Equal(expectedUrl, cleaned);
             Assert.True(File.Exists(customLogPath));
-            string logContent = File.ReadAllText(customLogPath);
+            string logContent = ReadSharedLog(customLogPath);
             Assert.Contains(expectedLogFragment, logContent);
         }
         finally
         {
+            AppLogger.CloseWriter();
             if (Directory.Exists(tempDir))
             {
                 try { Directory.Delete(tempDir, recursive: true); } catch { }
@@ -397,17 +398,25 @@ public class KomgaClientUrlSecurityTests
 
             if (File.Exists(customLogPath))
             {
-                string logContent = File.ReadAllText(customLogPath);
+                string logContent = ReadSharedLog(customLogPath);
                 Assert.DoesNotContain("[Komga] Inferred unencrypted", logContent);
                 Assert.DoesNotContain("[Komga] Using unencrypted HTTP", logContent);
             }
         }
         finally
         {
+            AppLogger.CloseWriter();
             if (Directory.Exists(tempDir))
             {
                 try { Directory.Delete(tempDir, recursive: true); } catch { }
             }
         }
+    }
+
+    private static string ReadSharedLog(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var sr = new StreamReader(fs);
+        return sr.ReadToEnd();
     }
 }

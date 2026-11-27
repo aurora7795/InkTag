@@ -195,8 +195,15 @@ public class MetadataBackupJournalTests : IDisposable
         Assert.Contains(backups, b => b.Id == "valid001");
         Assert.Contains(backups, b => b.Id == "valid002");
 
-        string logs = File.ReadAllText(logPath);
+        string logs = ReadSharedLog(logPath);
         Assert.Contains("[MetadataBackupService] Failed to parse journal entry", logs);
+    }
+
+    private static string ReadSharedLog(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var sr = new StreamReader(fs);
+        return sr.ReadToEnd();
     }
 
     [Fact]

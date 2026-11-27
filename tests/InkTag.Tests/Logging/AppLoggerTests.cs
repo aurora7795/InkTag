@@ -30,7 +30,7 @@ public class AppLoggerTests
             AppLogger.LogError("Test Error Message", new InvalidOperationException("Test exception detail"));
 
             Assert.True(File.Exists(customLogPath));
-            string logContent = File.ReadAllText(customLogPath);
+            string logContent = ReadSharedLog(customLogPath);
 
             Assert.Contains("[INFO] Test Info Message", logContent);
             Assert.Contains("[WARN] Test Warning Message", logContent);
@@ -44,6 +44,13 @@ public class AppLoggerTests
                 try { Directory.Delete(tempDir, recursive: true); } catch { }
             }
         }
+    }
+
+    private static string ReadSharedLog(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var sr = new StreamReader(fs);
+        return sr.ReadToEnd();
     }
 
     private static readonly object TestSync = new();
@@ -63,7 +70,7 @@ public class AppLoggerTests
             AppLogger.LogInfo("Immediate Flush Check Line 2");
 
             // Verify content is immediately readable by concurrent reader due to AutoFlush and FileShare.ReadWrite
-            string content = File.ReadAllText(customLogPath);
+            string content = ReadSharedLog(customLogPath);
             Assert.Contains("Immediate Flush Check Line 1", content);
             Assert.Contains("Immediate Flush Check Line 2", content);
 
@@ -100,20 +107,21 @@ public class AppLoggerTests
                 AppLogger.IsDebugEnabled = false;
                 AppLogger.LogDebug("SecretDebugDisabledMessage");
 
-                string logContent = File.ReadAllText(tempLog);
+                string logContent = ReadSharedLog(tempLog);
                 Assert.DoesNotContain("SecretDebugDisabledMessage", logContent);
 
                 // Debug enabled
                 AppLogger.IsDebugEnabled = true;
                 AppLogger.LogDebug("SecretDebugEnabledMessage");
 
-                logContent = File.ReadAllText(tempLog);
+                logContent = ReadSharedLog(tempLog);
                 Assert.Contains("SecretDebugEnabledMessage", logContent);
                 Assert.Contains("[DEBUG]", logContent);
             }
             finally
             {
                 AppLogger.IsDebugEnabled = false;
+                AppLogger.CloseWriter();
                 if (File.Exists(tempLog)) File.Delete(tempLog);
             }
         }
