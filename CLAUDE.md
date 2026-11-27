@@ -46,6 +46,7 @@ GitHub Issues serve as the single source of truth and central backlog for all pe
    * Apply appropriate labels: `bug`, `enhancement`, `deferred`, `tech-debt`, `documentation`.
 
 4. **Issue-Driven Development Workflow**:
+   * **External Bug Priority (Top Priority)**: Any bug raised by external users or contributors (anyone other than the repository owner/maintainers or AI agents) is **top priority** and must be triaged and addressed ahead of internal backlog, refactoring, or feature work. Always check issue authors when reviewing `gh issue list`.
    * **Backlog First**: Before planning or starting significant work, check active issues (`gh issue list`) to avoid duplicate work and leverage existing context.
    * **Active Issue Context**: When starting work on an issue:
      1. Inspect the issue: `gh issue view <issue-number>`
