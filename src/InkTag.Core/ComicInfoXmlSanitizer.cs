@@ -106,10 +106,19 @@ internal static class ComicInfoXmlSanitizer
         if (string.IsNullOrWhiteSpace(rawXml))
             return "<ComicInfo />";
 
-        // 1. Strip invalid XML 1.0 control characters (except \t, \n, \r)
+        // 1. Strip invalid XML 1.0 control characters (except \t, \n, \r) while preserving valid surrogate pairs
         var sb = new StringBuilder(rawXml.Length);
-        foreach (char c in rawXml)
+        for (int i = 0; i < rawXml.Length; i++)
         {
+            char c = rawXml[i];
+            if (char.IsHighSurrogate(c) && i + 1 < rawXml.Length && char.IsLowSurrogate(rawXml[i + 1]))
+            {
+                sb.Append(c);
+                sb.Append(rawXml[i + 1]);
+                i++;
+                continue;
+            }
+
             if (c == 0x9 || c == 0xA || c == 0xD ||
                 (c >= 0x20 && c <= 0xD7FF) ||
                 (c >= 0xE000 && c <= 0xFFFD))
