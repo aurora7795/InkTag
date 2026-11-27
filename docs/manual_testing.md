@@ -102,6 +102,19 @@ This file is the living ledger for tracking manual quality assurance activities,
   2. Verify each comic matches against its respective volume year instead of sharing the first volume's results.
 
 * **Expected Result:** Distinct series years resolve independently and error responses are not cached.
+### [Issue #59]: Komga Sync Exact Matching & Resource Cleanup
+* **Branch / Commit:** `fix/issue-59-komga-escaping-and-disposal`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Core` (`KomgaClient`, `KomgaSyncService`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify Komga sync does not mis-tag unrelated books/series when no exact path or name match exists.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Unmatched Book/Series Does Not Target Wrong Item):**
+  1. Sync a local comic whose filename/series is not present on Komga (or shares a partial substring with another book).
+  2. Verify Komga sync reports not found rather than analyzing an unrelated book/series.
+
+* **Expected Result:** Unmatched items report a clean failure without touching unrelated Komga entries.
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
