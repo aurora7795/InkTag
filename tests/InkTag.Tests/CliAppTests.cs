@@ -336,4 +336,46 @@ public class CliAppTests
         Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains("patch", doc.RootElement.GetProperty("error").GetString(), StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task RunAsync_RemovePage_OutOfBounds_ReturnsNonZeroExitCode_AndWritesErrorToErrWriter()
+    {
+        string cbz = CreateTestCbz($"cli_rm_oob_{Guid.NewGuid():N}.cbz");
+        try
+        {
+            using var swOut = new StringWriter();
+            using var swErr = new StringWriter();
+
+            int exitCode = await CliApp.RunAsync(new[] { "remove-page", cbz, "--index", "99", "--dry-run" }, null, swOut, swErr);
+
+            Assert.Equal(1, exitCode);
+            Assert.Equal(string.Empty, swOut.ToString());
+            Assert.Contains("out of bounds", swErr.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
+
+    [Fact]
+    public async Task RunAsync_RemovePage_OutOfBoundsJson_ReturnsNonZeroExitCode_AndSuccessFalse()
+    {
+        string cbz = CreateTestCbz($"cli_rm_oob_json_{Guid.NewGuid():N}.cbz");
+        try
+        {
+            using var swOut = new StringWriter();
+            using var swErr = new StringWriter();
+
+            int exitCode = await CliApp.RunAsync(new[] { "remove-page", cbz, "--index", "99", "--dry-run", "--json" }, null, swOut, swErr);
+
+            Assert.Equal(1, exitCode);
+            using var doc = JsonDocument.Parse(swOut.ToString());
+            Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
+        }
+        finally
+        {
+            if (File.Exists(cbz)) File.Delete(cbz);
+        }
+    }
 }

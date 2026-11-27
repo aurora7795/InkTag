@@ -76,14 +76,19 @@ public static class CliApp
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    if (ReferenceEquals(errWriter, Console.Error)) Console.ForegroundColor = ConsoleColor.Red;
                     errWriter.WriteLine($"Error: {errMsg}");
-                    Console.ResetColor();
+                    if (ReferenceEquals(errWriter, Console.Error)) Console.ResetColor();
                 }
                 return 1;
             }
 
-            return await parseResult.InvokeAsync(null, ct);
+            var invocationConfig = new InvocationConfiguration
+            {
+                Output = outWriter,
+                Error = errWriter
+            };
+            return await parseResult.InvokeAsync(invocationConfig, ct);
         }
         catch (Exception ex)
         {
@@ -306,6 +311,7 @@ public static class CliApp
                     {
                         outWriter.WriteLine($"Bulk edit complete: {result.Report?.Successes.Count ?? 0} succeeded, {result.Report?.Failures.Count ?? 0} failed.");
                     }
+                    if ((result.Report?.Failures.Count ?? 0) > 0) return 1;
                 }
             }
             return 0;
@@ -478,11 +484,12 @@ public static class CliApp
                     }
                     else
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        outWriter.WriteLine($"Failed to strip page: {result.ErrorMessage}");
-                        Console.ResetColor();
+                        if (ReferenceEquals(errWriter, Console.Error)) Console.ForegroundColor = ConsoleColor.Red;
+                        errWriter.WriteLine($"Failed to strip page: {result.ErrorMessage}");
+                        if (ReferenceEquals(errWriter, Console.Error)) Console.ResetColor();
                     }
                 }
+                return result.Success ? 0 : 1;
             }
             else if (Directory.Exists(targetPath))
             {
@@ -515,11 +522,12 @@ public static class CliApp
                     }
                 }
 
+                bool allSucceeded = isDryRun || strippedCount == files.Count;
                 if (isJson)
                 {
                     var summary = new
                     {
-                        success = true,
+                        success = allSucceeded,
                         dryRun = isDryRun,
                         totalFiles = files.Count,
                         strippedCount = isDryRun ? files.Count : strippedCount,
@@ -531,12 +539,12 @@ public static class CliApp
                 {
                     outWriter.WriteLine($"{(isDryRun ? "[DRY RUN] Would strip" : "Stripped")} first page across {results.Count(r => r.Success)} of {files.Count} files.");
                 }
+                return allSucceeded ? 0 : 1;
             }
             else
             {
                 throw new FileNotFoundException($"Path not found: '{targetPath}'");
             }
-            return 0;
         }));
         rootCommand.Add(stripIntroCmd);
 
@@ -563,17 +571,31 @@ public static class CliApp
             if (isDryRun)
             {
                 var entries = editor.GetImageEntries(filePath);
-                string? targetEntry = pageIndex >= 0 && pageIndex < entries.Count ? entries[pageIndex] : null;
+                bool inBounds = pageIndex >= 0 && pageIndex < entries.Count;
+                string? targetEntry = inBounds ? entries[pageIndex] : null;
                 if (isJson)
                 {
-                    var res = new { success = true, dryRun = true, file = filePath, pageIndex = pageIndex, targetEntry = targetEntry, totalPages = entries.Count };
+                    var res = new
+                    {
+                        success = inBounds,
+                        dryRun = true,
+                        file = filePath,
+                        pageIndex = pageIndex,
+                        targetEntry = targetEntry,
+                        totalPages = entries.Count,
+                        error = inBounds ? null : $"Page index {pageIndex} is out of bounds for archive with {entries.Count} page(s)."
+                    };
                     outWriter.WriteLine(JsonSerializer.Serialize(res, SerializerOptions));
                 }
-                else
+                else if (inBounds)
                 {
                     outWriter.WriteLine($"[DRY RUN] Would remove page index {pageIndex} ('{targetEntry}') from '{Path.GetFileName(filePath)}' ({entries.Count} -> {Math.Max(0, entries.Count - 1)} pages).");
                 }
-                return 0;
+                else
+                {
+                    errWriter.WriteLine($"Error: Page index {pageIndex} is out of bounds for '{Path.GetFileName(filePath)}' ({entries.Count} page(s)).");
+                }
+                return inBounds ? 0 : 1;
             }
 
             var result = editor.RemoveArchivePages(filePath, new[] { pageIndex });
@@ -589,12 +611,12 @@ public static class CliApp
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    outWriter.WriteLine($"Failed to remove page: {result.ErrorMessage}");
-                    Console.ResetColor();
+                    if (ReferenceEquals(errWriter, Console.Error)) Console.ForegroundColor = ConsoleColor.Red;
+                    errWriter.WriteLine($"Failed to remove page: {result.ErrorMessage}");
+                    if (ReferenceEquals(errWriter, Console.Error)) Console.ResetColor();
                 }
             }
-            return 0;
+            return result.Success ? 0 : 1;
         }));
         rootCommand.Add(removePageCmd);
 
@@ -728,6 +750,7 @@ public static class CliApp
                 {
                     outWriter.WriteLine(result.Message);
                 }
+                return result.Success ? 0 : 1;
             }
             else if (Directory.Exists(targetPath))
             {
@@ -751,7 +774,10 @@ public static class CliApp
                 {
                     if (!isJson)
                     {
-                        outWriter.WriteLine($"[{report.ProcessedItems}/{report.TotalItems}] {report.StatusMessage}");
+                        lock (outWriter)
+                        {
+                            outWriter.WriteLine($"[{report.ProcessedItems}/{report.TotalItems}] {report.StatusMessage}");
+                        }
                     }
                 });
 
@@ -762,11 +788,12 @@ public static class CliApp
                     await queueService.ApplyMatchedMetadataAsync(queue, mergeMode, stripDetectedIntroPages: stripIntroPage, ct: ct);
                 }
 
+                bool scrapeSucceeded = summaryReport.Failed == 0;
                 if (isJson)
                 {
                     var summary = new
                     {
-                        success = true,
+                        success = scrapeSucceeded,
                         dryRun = isDryRun,
                         totalFiles = summaryReport.Total,
                         scrapedCount = summaryReport.Matched,
@@ -794,12 +821,12 @@ public static class CliApp
                         outWriter.WriteLine("(Dry run: no changes written to files)");
                     }
                 }
+                return scrapeSucceeded ? 0 : 1;
             }
             else
             {
                 throw new FileNotFoundException($"Target path not found: '{targetPath}'");
             }
-            return 0;
         }));
         rootCommand.Add(scrapeCmd);
 
@@ -890,7 +917,7 @@ public static class CliApp
             {
                 var jsonOut = new
                 {
-                    success = true,
+                    success = result.Failed == 0,
                     total = result.Total,
                     renamed = result.Renamed,
                     skipped = result.Skipped,
@@ -909,7 +936,7 @@ public static class CliApp
             {
                 outWriter.WriteLine($"Renamed {result.Renamed} of {result.Total} file(s) ({result.Skipped} unchanged, {result.Failed} failed).");
             }
-            return 0;
+            return result.Failed == 0 ? 0 : 1;
         }));
         rootCommand.Add(renameCmd);
 
