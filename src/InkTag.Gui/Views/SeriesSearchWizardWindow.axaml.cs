@@ -84,8 +84,7 @@ public partial class SeriesSearchWizardWindow : Window
     {
         try
         {
-            var coverService = new ArchiveCoverService();
-            _localCoverBitmap = await coverService.LoadCoverAsync(filePath, CancellationToken.None);
+            _localCoverBitmap = await SharedImageResources.ArchiveCoverService.LoadCoverAsync(filePath, CancellationToken.None);
             if (_localCoverBitmap != null)
             {
                 if (LocalCoverImageHeader != null) LocalCoverImageHeader.Source = _localCoverBitmap;

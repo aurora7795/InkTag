@@ -12,17 +12,8 @@ namespace InkTag.Gui.ViewModels;
 
 public class SeriesItemViewModel : ObservableObject
 {
-    private static readonly LruImageCache ImageCache = new(60);
-    private static readonly HttpClient SharedHttpClient = new();
-
-    static SeriesItemViewModel()
-    {
-        SharedHttpClient.Timeout = TimeSpan.FromSeconds(8);
-        if (!SharedHttpClient.DefaultRequestHeaders.Contains("User-Agent"))
-        {
-            SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", "InkTag/1.0 (SeriesWizard)");
-        }
-    }
+    private static LruImageCache ImageCache => SharedImageResources.RemoteThumbnailCache;
+    private static HttpClient SharedHttpClient => SharedImageResources.ThumbnailHttpClient;
 
     public SeriesSearchResult Result { get; }
 

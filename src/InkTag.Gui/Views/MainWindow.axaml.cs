@@ -208,8 +208,7 @@ public partial class MainWindow : Window
 
             if (targetItem.CoverImage == null && !string.IsNullOrEmpty(targetItem.FilePath))
             {
-                var coverService = new Services.ArchiveCoverService();
-                await targetItem.LoadCoverAsync(coverService, System.Threading.CancellationToken.None);
+                await targetItem.LoadCoverAsync(Services.SharedImageResources.ArchiveCoverService, System.Threading.CancellationToken.None);
             }
 
             var model = targetItem.ToModel();
@@ -251,8 +250,7 @@ public partial class MainWindow : Window
 
             if (targetItem.CoverImage == null && !string.IsNullOrEmpty(targetItem.FilePath))
             {
-                var coverService = new Services.ArchiveCoverService();
-                await targetItem.LoadCoverAsync(coverService, System.Threading.CancellationToken.None);
+                await targetItem.LoadCoverAsync(Services.SharedImageResources.ArchiveCoverService, System.Threading.CancellationToken.None);
             }
 
             string initialQuery = targetItem.Series ?? "";

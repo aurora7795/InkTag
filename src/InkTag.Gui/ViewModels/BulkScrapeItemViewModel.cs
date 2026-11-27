@@ -15,8 +15,8 @@ namespace InkTag.Gui.ViewModels;
 
 public class BulkScrapeItemViewModel : ObservableObject
 {
-    private static readonly LruImageCache OnlineImageCache = new(60);
-    private static readonly HttpClient HttpThumbnailClient = new();
+    private static LruImageCache OnlineImageCache => SharedImageResources.RemoteThumbnailCache;
+    private static HttpClient HttpThumbnailClient => SharedImageResources.ThumbnailHttpClient;
 
     // Pre-allocated static brushes to avoid heap allocation on every getter invocation
     private static readonly IBrush BrushDarkGray = new SolidColorBrush(Color.Parse("#333338"));
@@ -31,15 +31,6 @@ public class BulkScrapeItemViewModel : ObservableObject
     private static readonly IBrush BrushSkyBlue = new SolidColorBrush(Color.Parse("#2B88D8"));
     private static readonly IBrush BrushDarkSlate = new SolidColorBrush(Color.Parse("#2D3748"));
     private static readonly IBrush BrushMutedText = new SolidColorBrush(Color.Parse("#CCCCCC"));
-
-    static BulkScrapeItemViewModel()
-    {
-        HttpThumbnailClient.Timeout = TimeSpan.FromSeconds(6);
-        if (!HttpThumbnailClient.DefaultRequestHeaders.Contains("User-Agent"))
-        {
-            HttpThumbnailClient.DefaultRequestHeaders.Add("User-Agent", "InkTag/1.0 (BulkScraperQueue)");
-        }
-    }
 
     public BulkScrapeQueueItem Item { get; }
 

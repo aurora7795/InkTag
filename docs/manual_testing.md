@@ -141,6 +141,19 @@ This file is the living ledger for tracking manual quality assurance activities,
   2. Toggle `Black & White` in the Inspector and `Set Manga Direction` -> `Manga (Right-to-Left)` in Bulk Tools; verify both mark/apply cleanly.
 
 * **Expected Result:** No Avalonia binding errors in debug output and all controls update state as expected.
+### [Issue #61]: Shared GUI Image Caches & File Discovery
+* **Branch / Commit:** `refactor/issue-61-consolidate-caches-and-operations`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Gui` (`SharedImageResources`), `InkTag.Core` (`AgentOperations`), `InkTag.Cli`, `InkTag.Mcp`
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify cover thumbnails load cleanly across Scraper Match, Series Wizard, and Bulk Scrape Queue using the shared cache, and `rename` skips macOS `._*` files.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify GUI Cover & Thumbnail Caching):**
+  1. Open Scraper Match, Series Search Wizard, and Bulk Scrape Queue on a folder of comics.
+  2. Verify local covers and remote thumbnails display cleanly and quickly on repeat opens.
+
+* **Expected Result:** No missing covers/thumbnails and no unbounded hash cache growth.
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
