@@ -824,21 +824,7 @@ public static class CliApp
             bool isDryRun = parseResult.GetValue(dryRunOpt);
             bool isJson = parseResult.GetValue(jsonOpt);
 
-            var filesToProcess = new List<string>();
-            if (File.Exists(targetPath))
-            {
-                filesToProcess.Add(targetPath);
-            }
-            else if (Directory.Exists(targetPath))
-            {
-                var searchOpt = isRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-                var exts = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".cbz", ".cbr", ".cb7", ".zip", ".rar" };
-                filesToProcess.AddRange(Directory.EnumerateFiles(targetPath, "*.*", searchOpt).Where(f => exts.Contains(Path.GetExtension(f))));
-            }
-            else
-            {
-                throw new FileNotFoundException("Target file or directory not found.", targetPath);
-            }
+            var filesToProcess = AgentOperations.CollectComicFiles(targetPath, isRecursive);
 
             var items = filesToProcess.Select(f =>
             {

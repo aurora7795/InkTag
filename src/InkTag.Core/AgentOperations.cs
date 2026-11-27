@@ -47,6 +47,25 @@ public class AgentUpdateResult
 public static class AgentOperations
 {
     /// <summary>
+    /// Collects supported comic files from a file or directory path, filtering out macOS AppleDouble and __MACOSX entries.
+    /// </summary>
+    public static List<string> CollectComicFiles(string targetPath, bool recursive = false)
+    {
+        if (File.Exists(targetPath))
+        {
+            return new List<string> { targetPath };
+        }
+        if (Directory.Exists(targetPath))
+        {
+            var searchOpt = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            return Directory.EnumerateFiles(targetPath, "*.*", searchOpt)
+                .Where(MetadataEditor.IsSupportedComicFile)
+                .ToList();
+        }
+        throw new FileNotFoundException("Target file or directory not found.", targetPath);
+    }
+
+    /// <summary>
     /// Scans a directory for comic archives (.cbz, .cbr) and checks for missing metadata fields or untagged comics.
     /// </summary>
     public static AgentScanResult ScanDirectory(

@@ -14,18 +14,8 @@ namespace InkTag.Gui.ViewModels;
 
 public class CandidateItemViewModel : ObservableObject
 {
-    private static readonly LruImageCache ImageCache = new(60);
-    private static readonly ConcurrentDictionary<string, ulong> HashCache = new();
-    private static readonly HttpClient SharedHttpClient = new();
-
-    static CandidateItemViewModel()
-    {
-        SharedHttpClient.Timeout = TimeSpan.FromSeconds(8);
-        if (!SharedHttpClient.DefaultRequestHeaders.Contains("User-Agent"))
-        {
-            SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", "InkTag/1.0 (ScraperCandidate)");
-        }
-    }
+    private static LruImageCache ImageCache => SharedImageResources.RemoteThumbnailCache;
+    private static HttpClient SharedHttpClient => SharedImageResources.ThumbnailHttpClient;
 
     public ComicSearchResult Result { get; }
     private readonly ulong? _targetCoverHash;
@@ -127,7 +117,7 @@ public class CandidateItemViewModel : ObservableObject
         if (ImageCache.TryGetValue(CoverUrl, out var cachedBitmap) && cachedBitmap != null)
         {
             Thumbnail = cachedBitmap;
-            if (HashCache.TryGetValue(CoverUrl, out var cachedHash))
+            if (SharedImageResources.TryGetCachedHash(CoverUrl, out var cachedHash))
             {
                 ProcessCoverHash(cachedHash);
             }
@@ -145,7 +135,7 @@ public class CandidateItemViewModel : ObservableObject
             ulong hash = PerceptualHashService.ComputeDHash(bytes);
             if (hash != 0)
             {
-                HashCache[CoverUrl] = hash;
+                SharedImageResources.SetCachedHash(CoverUrl, hash);
             }
 
             Dispatcher.UIThread.Post(() =>

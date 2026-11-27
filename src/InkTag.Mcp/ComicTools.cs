@@ -474,21 +474,7 @@ public static class ComicTools
             EnsureWriteAccess("RenameComicFiles");
         }
 
-        var filesToProcess = new List<string>();
-        if (File.Exists(path))
-        {
-            filesToProcess.Add(path);
-        }
-        else if (Directory.Exists(path))
-        {
-            var searchOpt = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            var exts = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".cbz", ".cbr", ".cb7", ".zip", ".rar" };
-            filesToProcess.AddRange(Directory.EnumerateFiles(path, "*.*", searchOpt).Where(f => exts.Contains(Path.GetExtension(f))));
-        }
-        else
-        {
-            throw new FileNotFoundException($"Path not found: '{path}'");
-        }
+        var filesToProcess = AgentOperations.CollectComicFiles(path, recursive);
 
         var items = filesToProcess.Select(f =>
         {
@@ -613,9 +599,7 @@ public static class ComicTools
         }
         else if (Directory.Exists(path))
         {
-            var exts = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".cbz", ".cbr", ".cb7", ".zip", ".rar" };
-            var files = Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(f => exts.Contains(Path.GetExtension(f)))
+            var files = AgentOperations.CollectComicFiles(path, recursive: false)
                 .Select(f => (FilePath: f, Info: _editor.ReadMetadata(f)))
                 .ToList();
 

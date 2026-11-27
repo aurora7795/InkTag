@@ -146,8 +146,7 @@ public partial class ScraperMatchWindow : Window, System.ComponentModel.INotifyP
     {
         try
         {
-            var coverService = new Gui.Services.ArchiveCoverService();
-            var (bitmap, hash) = await coverService.LoadCoverWithHashAsync(_filePath!, pageIndex, default);
+            var (bitmap, hash) = await Gui.Services.SharedImageResources.ArchiveCoverService.LoadCoverWithHashAsync(_filePath!, pageIndex, default);
             if (bitmap != null)
             {
                 LocalCoverImage = bitmap;
