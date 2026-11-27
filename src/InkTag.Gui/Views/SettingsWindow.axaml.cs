@@ -124,17 +124,11 @@ public partial class SettingsWindow : Window
 
         try
         {
-            var tempSettings = new AppSettings
-            {
-                KomgaServerUrl = url,
-                KomgaApiKey = KomgaApiKeyTextBox.Text?.Trim() ?? "",
-                KomgaUser = KomgaUserTextBox.Text?.Trim() ?? "",
-                KomgaPassword = KomgaPasswordTextBox.Text?.Trim() ?? ""
-            };
-            var tempService = new AppSettingsService();
-            tempService.SaveSettings(tempSettings);
+            string apiKey = KomgaApiKeyTextBox.Text?.Trim() ?? "";
+            string user = KomgaUserTextBox.Text?.Trim() ?? "";
+            string password = KomgaPasswordTextBox.Text?.Trim() ?? "";
 
-            var client = new InkTag.Core.Komga.KomgaClient(tempService);
+            using var client = new InkTag.Core.Komga.KomgaClient(url, apiKey, user, password);
             bool ok = await client.TestConnectionAsync();
             if (ok)
             {

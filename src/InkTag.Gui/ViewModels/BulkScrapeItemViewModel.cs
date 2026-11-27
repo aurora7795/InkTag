@@ -464,11 +464,10 @@ public class BulkScrapeItemViewModel : ObservableObject
         OnPropertyChanged(nameof(IntroPageBadge));
     }
 
-    private bool _isExtractingFallback;
+    private int _isExtractingFallback;
     private void TryExtractThumbnailFallbackAsync()
     {
-        if (_isExtractingFallback || LocalThumbnail != null) return;
-        _isExtractingFallback = true;
+        if (LocalThumbnail != null || Interlocked.CompareExchange(ref _isExtractingFallback, 1, 0) != 0) return;
         string path = Item.FilePath;
         int pageIndex = Item.DetectedIntroPage ? Item.TrueCoverPageIndex : 0;
 
@@ -499,7 +498,7 @@ public class BulkScrapeItemViewModel : ObservableObject
             }
             finally
             {
-                _isExtractingFallback = false;
+                Interlocked.Exchange(ref _isExtractingFallback, 0);
             }
         });
     }

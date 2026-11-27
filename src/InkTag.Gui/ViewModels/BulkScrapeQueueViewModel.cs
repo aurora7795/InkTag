@@ -12,7 +12,7 @@ using InkTag.Core.Scrapers;
 
 namespace InkTag.Gui.ViewModels;
 
-public class BulkScrapeQueueViewModel : ObservableObject
+public class BulkScrapeQueueViewModel : ObservableObject, IDisposable
 {
     private readonly BulkScrapeQueueService _queueService;
     private readonly AppSettingsService _settingsService;
@@ -418,23 +418,25 @@ public class BulkScrapeQueueViewModel : ObservableObject
     {
         if (IsRunning) return 0;
 
-        _isSaving = true;
-        IsRunning = true;
-        _cts = new CancellationTokenSource();
-        ProgressPercentage = 0;
-        ProgressStatus = "Writing matched metadata to comic files...";
-
         var rawQueue = Items
             .Where(i => i.IsSelected && i.Status != BulkScrapeItemStatus.Saved && i.Status != BulkScrapeItemStatus.Excluded && i.MatchedCandidate != null)
             .Select(i => i.Item)
             .ToList();
-        var itemMap = Items.ToDictionary(i => i.Item);
 
         if (rawQueue.Count == 0)
         {
             ProgressStatus = "No eligible unsaved matched items selected.";
             return 0;
         }
+
+        _isSaving = true;
+        IsRunning = true;
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        ProgressPercentage = 0;
+        ProgressStatus = "Writing matched metadata to comic files...";
+
+        var itemMap = Items.ToDictionary(i => i.Item);
 
         var progress = new Progress<BulkScrapeProgressReport>(report =>
         {
@@ -510,5 +512,12 @@ public class BulkScrapeQueueViewModel : ObservableObject
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyButtonText));
         OnPropertyChanged(nameof(ApplyButtonBackground));
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
     }
 }

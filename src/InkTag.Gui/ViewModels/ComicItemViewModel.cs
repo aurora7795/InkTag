@@ -440,6 +440,12 @@ public partial class ComicItemViewModel : ObservableValidator
         {
             OnPropertyChanged(nameof(HasEssentialMetadata));
             OnPropertyChanged(nameof(IsUntagged));
+            OnPropertyChanged(nameof(StatusBadgeText));
+        }
+
+        if (e.PropertyName == nameof(IsDirty) || e.PropertyName == nameof(HasReadError) || e.PropertyName == nameof(IsUntagged))
+        {
+            OnPropertyChanged(nameof(StatusBadgeText));
         }
 
         if (e.PropertyName == nameof(IsDirty) || e.PropertyName == nameof(FilePath))
@@ -460,6 +466,8 @@ public partial class ComicItemViewModel : ObservableValidator
             e.PropertyName != nameof(CoverImage) && 
             e.PropertyName != nameof(CoverHash) &&
             e.PropertyName != nameof(HasErrors) &&
+            e.PropertyName != nameof(HasReadError) &&
+            e.PropertyName != nameof(StatusBadgeText) &&
             e.PropertyName != nameof(HasEssentialMetadata) &&
             e.PropertyName != nameof(IsUntagged) &&
             e.PropertyName != nameof(IsCbr) &&

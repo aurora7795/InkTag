@@ -37,6 +37,27 @@ This file is the living ledger for tracking manual quality assurance activities,
   2. Verify permissions are `-rw-------` (`0600`).
 
 * **Expected Result:** All boundary, read-only, and file-permission checks hold without regressions to normal workflows.
+### [Issues #50, #51, #52]: GUI Settings Preservation, Scan/Cover Concurrency, & Bulk Scrape Lockup
+* **Branch / Commit:** `fix/issue-50-51-52-gui-bugs`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Gui` (`SettingsWindow`, `MainWindowViewModel`, `BulkScrapeQueueViewModel`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify that testing Komga connection preserves existing settings on Cancel, selecting comics during a scan does not cancel the scan, and Bulk Scrape Apply with zero eligible items does not lock the UI.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify `TestKomga_Click` Preserves Settings on Cancel - #50):**
+  1. Open Settings, ensure a ComicVine API key is configured, then enter a Komga URL and click **Test Connection**.
+  2. Click **Cancel** to close Settings, then reopen Settings.
+  3. Verify your ComicVine API key, theme, and previous Komga settings are intact.
+- [ ] **Step 2 (Verify Scan vs. Cover Load Independence - #51):**
+  1. Open a large comic folder to start a library scan.
+  2. While scanning is in progress, click a comic row in the grid to load its cover in the inspector.
+  3. Verify the library scan continues uninterrupted to completion.
+- [ ] **Step 3 (Verify Bulk Scrape Empty Apply - #52):**
+  1. Open Bulk Auto-Tag Queue and uncheck all matched items (or open with no matched items), then click **Apply**.
+  2. Verify the status message updates and the **Start** / **Apply** buttons remain responsive (not stuck in a running state).
+
+* **Expected Result:** Settings are preserved on Cancel, scans are not cancelled by row selection, and Bulk Scrape Queue buttons remain usable.
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification

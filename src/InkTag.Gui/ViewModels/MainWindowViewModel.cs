@@ -31,12 +31,13 @@ public enum MainWindowViewMode
     Spreadsheet
 }
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly ComicScannerService _scannerService = new();
     private readonly ArchiveCoverService _coverService = new();
     private readonly List<ComicItemViewModel> _selectedComics = new();
     private CancellationTokenSource? _scanCts;
+    private CancellationTokenSource? _coverLoadCts;
     private CancellationTokenSource? _saveCts;
     private Velopack.UpdateInfo? _pendingUpdateInfo;
     private string? _pendingReleaseUrl;
@@ -757,15 +758,21 @@ public partial class MainWindowViewModel : ViewModelBase
     private async void TriggerActiveComicCoverLoad()
     {
         if (ActiveComic == null) return;
-        
-        _scanCts?.Cancel();
-        _scanCts = new CancellationTokenSource();
-        
+
+        _coverLoadCts?.Cancel();
+        _coverLoadCts?.Dispose();
+        _coverLoadCts = new CancellationTokenSource();
+        var ct = _coverLoadCts.Token;
+
         try
         {
-            await ActiveComic.LoadCoverAsync(_coverService, _scanCts.Token);
+            await ActiveComic.LoadCoverAsync(_coverService, ct);
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            InkTag.Core.Logging.AppLogger.LogDebug($"[MainWindowViewModel] Cover load failed for '{ActiveComic?.FileName}': {ex.Message}");
+        }
     }
 
     public void UpdateSelection(System.Collections.IList selectedItems)
@@ -833,6 +840,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ProgressValue = 0;
 
         _scanCts?.Cancel();
+        _scanCts?.Dispose();
         _scanCts = new CancellationTokenSource();
         var ct = _scanCts.Token;
         bool unseekableDetected = false;
@@ -1006,6 +1014,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveFailures.Clear();
 
         _saveCts?.Cancel();
+        _saveCts?.Dispose();
         _saveCts = new CancellationTokenSource();
 
         var editor = new MetadataEditor();
@@ -1274,5 +1283,20 @@ public partial class MainWindowViewModel : ViewModelBase
     public void ToggleInspector()
     {
         IsInspectorVisible = !IsInspectorVisible;
+    }
+
+    public void Dispose()
+    {
+        _scanCts?.Cancel();
+        _scanCts?.Dispose();
+        _scanCts = null;
+
+        _coverLoadCts?.Cancel();
+        _coverLoadCts?.Dispose();
+        _coverLoadCts = null;
+
+        _saveCts?.Cancel();
+        _saveCts?.Dispose();
+        _saveCts = null;
     }
 }
