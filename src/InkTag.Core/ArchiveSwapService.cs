@@ -200,10 +200,12 @@ internal static class ArchiveSwapService
                 File.Move(filePath, backupOriginalPath);
             }
 
+            bool swapSucceeded = false;
             try
             {
                 File.Move(tempCbzPath, targetPath);
                 tempCbzPath = null;
+                swapSucceeded = true;
             }
             catch (Exception)
             {
@@ -223,15 +225,19 @@ internal static class ArchiveSwapService
 
                 throw;
             }
-
-            // 6. Final clean up of backups
-            if (backupTargetPath != null && File.Exists(backupTargetPath))
+            finally
             {
-                File.Delete(backupTargetPath);
-            }
-            if (backupOriginalPath != null && File.Exists(backupOriginalPath))
-            {
-                File.Delete(backupOriginalPath);
+                if (swapSucceeded)
+                {
+                    if (backupTargetPath != null && File.Exists(backupTargetPath))
+                    {
+                        try { File.Delete(backupTargetPath); } catch (Exception ex) { AppLogger.LogDebug($"Backup target cleanup notice: {ex.Message}"); }
+                    }
+                    if (backupOriginalPath != null && File.Exists(backupOriginalPath))
+                    {
+                        try { File.Delete(backupOriginalPath); } catch (Exception ex) { AppLogger.LogDebug($"Backup original cleanup notice: {ex.Message}"); }
+                    }
+                }
             }
         }
         finally

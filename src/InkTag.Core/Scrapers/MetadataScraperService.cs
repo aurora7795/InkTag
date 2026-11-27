@@ -325,7 +325,7 @@ public class MetadataScraperService : IDisposable
                 {
                     prop.SetValue(target, MergeNotes(target.Notes, fetched.Notes));
                 }
-                else if (mode == ScrapeMergeMode.OverwriteAll)
+                else if (mode == ScrapeMergeMode.OverwriteAll || allowedFields != null)
                 {
                     prop.SetValue(target, fetchedVal);
                 }
