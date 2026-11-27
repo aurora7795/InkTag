@@ -17,6 +17,21 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #60]: CLI Exit Codes & `stdout`/`stderr` Separation
+* **Branch / Commit:** `fix/issue-60-cli-exit-codes-and-streams`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Cli` (`CliApp.cs`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify failed CLI commands return non-zero exit codes and route non-JSON errors to `stderr`.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Non-Zero Exit Code & `stderr` Routing):**
+  1. Run `dotnet run --project src/InkTag.Cli -- remove-page <test.cbz> --index 999` and inspect `$?` (`$LASTEXITCODE` on Windows).
+  2. Verify exit code is `1` and the error message is printed to `stderr` (not `stdout`).
+
+* **Expected Result:** Failed operations exit with non-zero status and keep `stdout` clean.
+* **Tester Notes:**
+
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
 * **Branch / Commit:** `fix/issue-48-linux-contextmenu-blur-box`
 * **Date Added:** 2026-11-22
