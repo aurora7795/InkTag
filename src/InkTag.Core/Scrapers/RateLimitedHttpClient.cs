@@ -17,6 +17,7 @@ public class RateLimitedHttpClient
     private readonly HttpClient _client;
     public int MaxRetries { get; set; } = 3;
     public TimeSpan InitialBackoff { get; set; } = TimeSpan.FromSeconds(5);
+    public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     public RateLimitedHttpClient(HttpClient? httpClient = null)
     {
@@ -48,7 +49,9 @@ public class RateLimitedHttpClient
                 }
 
                 _lastRequestTime = DateTimeOffset.UtcNow;
-                HttpResponseMessage response = await _client.GetAsync(url, ct);
+                using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                requestCts.CancelAfter(RequestTimeout);
+                using HttpResponseMessage response = await _client.GetAsync(url, requestCts.Token);
 
                 int statusCode = (int)response.StatusCode;
                 // HTTP 420 (ComicVine "Enhance Your Calm") or HTTP 429 ("Too Many Requests")
@@ -81,7 +84,6 @@ public class RateLimitedHttpClient
 
                     currentBackoff = TimeSpan.FromSeconds(currentBackoff.TotalSeconds * 2);
 
-                    response.Dispose();
                     RateLimitLock.Release();
                     lockReleasedInLoop = true;
 
@@ -90,7 +92,7 @@ public class RateLimitedHttpClient
                 }
 
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsStringAsync(ct);
+                return await response.Content.ReadAsStringAsync(requestCts.Token);
             }
             finally
             {

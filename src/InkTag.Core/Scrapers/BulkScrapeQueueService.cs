@@ -257,13 +257,15 @@ public class BulkScrapeQueueService
                     // Try smart series volume clustering if enabled
                     if (options.EnableSmartSeriesGrouping && _scraperService.SupportsSeriesSearch && !string.IsNullOrWhiteSpace(item.ParsedQuery.Series))
                     {
-                        string seriesKey = item.ParsedQuery.Series.Trim();
-                        var volumeIssuesTask = volumeCache.GetOrAdd(seriesKey, s => FetchVolumeIssuesForSeriesAsync(s, item.ParsedQuery.Year, ct));
+                        string seriesName = item.ParsedQuery.Series.Trim();
+                        int? seriesYear = item.ParsedQuery.Year;
+                        string volumeCacheKey = $"{seriesName}|{seriesYear?.ToString() ?? ""}";
+                        var volumeIssuesTask = volumeCache.GetOrAdd(volumeCacheKey, _ => FetchVolumeIssuesForSeriesAsync(seriesName, seriesYear, ct));
                         var volumeIssues = await volumeIssuesTask;
 
                         if (volumeIssues.Count > 0)
                         {
-                            var candidatePool = volumeIssues.ToList();
+                            var candidatePool = volumeIssues.Select(CloneSearchResult).ToList();
                             if (!string.IsNullOrWhiteSpace(item.ParsedQuery.IssueNumber))
                             {
                                 string cleanTargetNum = ComicVineProvider.NormalizeIssueNumber(item.ParsedQuery.IssueNumber);
@@ -275,6 +277,10 @@ public class BulkScrapeQueueService
                                         var specific = (await _scraperService.FetchSeriesIssuesAsync(volumeId, 1, 10, item.ParsedQuery, ct)).ToList();
                                         await PopulateCoverHashesForCandidatesAsync(specific, ct);
                                         candidatePool.AddRange(specific);
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        throw;
                                     }
                                     catch
                                     {
@@ -862,4 +868,23 @@ public class BulkScrapeQueueService
             StatusMessage = message
         });
     }
+
+    private static ComicSearchResult CloneSearchResult(ComicSearchResult src) => new()
+    {
+        IssueId = src.IssueId,
+        VolumeId = src.VolumeId,
+        SeriesTitle = src.SeriesTitle,
+        IssueNumber = src.IssueNumber,
+        IssueTitle = src.IssueTitle,
+        Publisher = src.Publisher,
+        CoverDate = src.CoverDate,
+        CoverUrl = src.CoverUrl,
+        SmallCoverUrl = src.SmallCoverUrl,
+        SiteDetailUrl = src.SiteDetailUrl,
+        Description = src.Description,
+        MatchConfidence = src.MatchConfidence,
+        VolumeStartYear = src.VolumeStartYear,
+        CoverHash = src.CoverHash,
+        VisualSimilarity = src.VisualSimilarity
+    };
 }

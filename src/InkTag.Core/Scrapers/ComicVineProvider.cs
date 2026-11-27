@@ -50,7 +50,10 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
         {
             string url = $"https://comicvine.gamespot.com/api/search/?api_key={Uri.EscapeDataString(apiKey)}&format=json&resources=issue&query={Uri.EscapeDataString(rawQuery)}";
             json = await _httpClient.GetStringAsync(url, ct);
-            _cache?.Set(cacheKey, json);
+            if (IsValidSuccessPayload(json))
+            {
+                _cache?.Set(cacheKey, json);
+            }
         }
 
         return ParseSearchResults(json, query);
@@ -71,7 +74,10 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
         {
             string url = $"https://comicvine.gamespot.com/api/issue/{normalizedId}/?api_key={Uri.EscapeDataString(apiKey)}&format=json";
             json = await _httpClient.GetStringAsync(url, ct);
-            _cache?.Set(cacheKey, json);
+            if (IsValidSuccessPayload(json))
+            {
+                _cache?.Set(cacheKey, json);
+            }
         }
 
         return ParseIssueDetails(json);
@@ -92,7 +98,10 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
         {
             string url = $"https://comicvine.gamespot.com/api/search/?api_key={Uri.EscapeDataString(apiKey)}&format=json&resources=volume&query={Uri.EscapeDataString(rawQuery)}";
             json = await _httpClient.GetStringAsync(url, ct);
-            _cache?.Set(cacheKey, json);
+            if (IsValidSuccessPayload(json))
+            {
+                _cache?.Set(cacheKey, json);
+            }
         }
 
         return ParseSeriesSearchResults(json);
@@ -125,7 +134,10 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
         {
             string url = $"https://comicvine.gamespot.com/api/issues/?api_key={Uri.EscapeDataString(apiKey)}&format=json&filter=volume:{cleanVolumeId}{issueFilter}&limit={pageSize}&offset={offset}&sort=cover_date:asc";
             json = await _httpClient.GetStringAsync(url, ct);
-            _cache?.Set(cacheKey, json);
+            if (IsValidSuccessPayload(json))
+            {
+                _cache?.Set(cacheKey, json);
+            }
         }
 
         return ParseSeriesIssuesResults(json, query);
@@ -400,7 +412,8 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
         }
 
         int? candidateYear = null;
-        if (!string.IsNullOrEmpty(result.CoverDate) && DateTime.TryParse(result.CoverDate, out var date))
+        if (!string.IsNullOrEmpty(result.CoverDate) &&
+            DateTime.TryParse(result.CoverDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date))
         {
             candidateYear = date.Year;
         }
@@ -613,7 +626,28 @@ public class ComicVineProvider : IMetadataScraperProvider, IDisposable
     }
 
     public static string CleanString(string input) => Regex.Replace(Regex.Replace(input, @"[^\w\s]", " "), @"\s+", " ").Trim();
-    public static string NormalizeIssueNumber(string input) => Regex.Replace(input, @"^[^\d]+", "").TrimStart('0');
+    public static string NormalizeIssueNumber(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        string digitsStripped = Regex.Replace(input, @"^[^\d]+", "");
+        if (string.IsNullOrEmpty(digitsStripped)) return string.Empty;
+        string trimmed = digitsStripped.TrimStart('0');
+        return string.IsNullOrEmpty(trimmed) ? "0" : trimmed;
+    }
+
+    private static bool IsValidSuccessPayload(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("status_code", out var status) && status.GetInt32() == 1;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static string StripHtml(string html)
     {
