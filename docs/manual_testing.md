@@ -17,6 +17,21 @@ This file is the living ledger for tracking manual quality assurance activities,
 
 ## ⏳ Pending Manual Verification
 
+### [Issue #58]: Bulk Scrape Multi-Year Series Clustering & Timeout Resilience
+* **Branch / Commit:** `fix/issue-58-scrapers-concurrency-and-caching`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Core` (`RateLimitedHttpClient`, `ComicVineProvider`, `BulkScrapeQueueService`, `ScraperCacheService`)
+* **Environment / OS:** macOS / Linux / Windows
+* **Goal:** Verify bulk scraping a folder containing two series with the same name but different years resolves distinct volumes and does not hang on slow responses.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Multi-Year Series Clustering):**
+  1. Place two comics with the same series title and different years (e.g. `Series (1986) #001.cbz` and `Series (2016) #001.cbz`) in a folder and run Bulk Auto-Tag.
+  2. Verify each comic matches against its respective volume year instead of sharing the first volume's results.
+
+* **Expected Result:** Distinct series years resolve independently and error responses are not cached.
+* **Tester Notes:**
+
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification
 * **Branch / Commit:** `fix/issue-48-linux-contextmenu-blur-box`
 * **Date Added:** 2026-11-22

@@ -22,7 +22,7 @@ public class ScraperCacheService : IDisposable
     private readonly object _diskLock = new();
     private readonly Timer _debounceTimer;
     private volatile bool _isDirty = false;
-    private bool _disposed = false;
+    private volatile bool _disposed = false;
 
     public ScraperCacheService(string? customCachePath = null)
     {
@@ -83,8 +83,15 @@ public class ScraperCacheService : IDisposable
     {
         if (!_disposed)
         {
-            // Debounce disk write by 2 seconds
-            _debounceTimer.Change(2000, Timeout.Infinite);
+            try
+            {
+                // Debounce disk write by 2 seconds
+                _debounceTimer.Change(2000, Timeout.Infinite);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore if disposed concurrently during shutdown
+            }
         }
     }
 
