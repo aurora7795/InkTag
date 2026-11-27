@@ -270,7 +270,15 @@ internal static class ComicInfoXmlSanitizer
         string GetTag(string tagName)
         {
             var match = Regex.Match(rawXml, $@"<{tagName}[^>]*>(.*?)</{tagName}>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value.Trim() : "";
+            if (!match.Success) return "";
+
+            string val = match.Groups[1].Value.Trim();
+            if (val.StartsWith("<![CDATA[", StringComparison.Ordinal) && val.EndsWith("]]>", StringComparison.Ordinal))
+            {
+                return val.Substring(9, val.Length - 12).Trim();
+            }
+
+            return System.Net.WebUtility.HtmlDecode(val).Trim();
         }
 
         int? GetIntTag(string tagName)

@@ -139,10 +139,12 @@ internal static class ComicArchiveHandler
                 using var rawStream = OpenReadOptimized(filePath);
                 using var nonSeekable = new NonSeekableStream(rawStream, cancellationToken);
                 using var zipArchive = new System.IO.Compression.ZipArchive(nonSeekable, System.IO.Compression.ZipArchiveMode.Read);
+                ComicInfo? cbiFromSeqFile = null;
                 foreach (var entry in zipArchive.Entries)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (Path.GetFileName(entry.FullName).Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase))
+                    string entryFileName = Path.GetFileName(entry.FullName);
+                    if (entryFileName.Equals("ComicInfo.xml", StringComparison.OrdinalIgnoreCase))
                     {
                         using var entryStream = entry.Open();
                         using var ms = new MemoryStream();
@@ -159,6 +161,18 @@ internal static class ComicArchiveHandler
                         AppLogger.LogDebug($"[ComicArchiveHandler] Read metadata via sequential NonSeekableStream for '{fileName}' in {seqSw.ElapsedMilliseconds}ms (Total: {sw.ElapsedMilliseconds}ms).");
                         return info;
                     }
+                    else if (cbiFromSeqFile == null &&
+                             (entryFileName.Equals("ComicBookInfo.json", StringComparison.OrdinalIgnoreCase) ||
+                              entryFileName.Equals("ComicBookInfo", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        using var entryStream = entry.Open();
+                        using var reader = new StreamReader(entryStream);
+                        string json = reader.ReadToEnd();
+                        if (ComicBookInfoParser.TryParse(json, out var parsedCbi) && parsedCbi != null)
+                        {
+                            cbiFromSeqFile = parsedCbi;
+                        }
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(zipArchive.Comment) &&
@@ -166,6 +180,12 @@ internal static class ComicArchiveHandler
                 {
                     AppLogger.LogDebug($"[ComicArchiveHandler] Read legacy ComicBookInfo from zip comment in sequential mode for '{fileName}' in {seqSw.ElapsedMilliseconds}ms.");
                     return seqCbi;
+                }
+
+                if (cbiFromSeqFile != null)
+                {
+                    AppLogger.LogDebug($"[ComicArchiveHandler] Read legacy ComicBookInfo.json in sequential mode for '{fileName}' in {seqSw.ElapsedMilliseconds}ms.");
+                    return cbiFromSeqFile;
                 }
 
                 AppLogger.LogDebug($"[ComicArchiveHandler] No ComicInfo.xml or legacy metadata found via sequential stream in '{fileName}' ({seqSw.ElapsedMilliseconds}ms).");
@@ -405,29 +425,40 @@ internal static class ComicArchiveHandler
                 using var nonSeekable = new NonSeekableStream(rawStream);
                 using var zip = new System.IO.Compression.ZipArchive(nonSeekable, System.IO.Compression.ZipArchiveMode.Read);
 
-                var collected = new List<(string Name, byte[] Bytes)>();
+                // Keep at most (pageIndex + 1) lowest-sorting entries in RAM instead of buffering the entire archive
+                int maxKeep = pageIndex + 1;
+                var topEntries = new List<(string Name, byte[] Bytes)>();
                 foreach (var entry in zip.Entries)
                 {
-                    if (!entry.FullName.EndsWith('/') && IsImageFileName(entry.FullName) && !IsIgnoredSystemEntry(entry.FullName))
+                    if (!entry.FullName.EndsWith('/') && !entry.FullName.EndsWith('\\') && IsImageFileName(entry.FullName) && !IsIgnoredSystemEntry(entry.FullName))
                     {
+                        string sortKey = entry.FullName.Replace('\\', '/');
+                        if (topEntries.Count == maxKeep &&
+                            NaturalStringComparer.OrdinalIgnoreCase.Compare(sortKey, topEntries[^1].Name) >= 0)
+                        {
+                            continue;
+                        }
+
                         using var entryStream = entry.Open();
                         using var ms = new MemoryStream();
                         entryStream.CopyTo(ms);
-                        collected.Add((entry.FullName, ms.ToArray()));
+                        var item = (sortKey, ms.ToArray());
+
+                        int insertIdx = topEntries.FindIndex(e => NaturalStringComparer.OrdinalIgnoreCase.Compare(sortKey, e.Name) < 0);
+                        if (insertIdx < 0) topEntries.Add(item);
+                        else topEntries.Insert(insertIdx, item);
+
+                        if (topEntries.Count > maxKeep)
+                        {
+                            topEntries.RemoveAt(topEntries.Count - 1);
+                        }
                     }
                 }
 
-                if (collected.Count > 0)
+                if (topEntries.Count > pageIndex)
                 {
-                    var sorted = collected
-                        .OrderBy(c => Path.GetFileName(c.Name), NaturalStringComparer.OrdinalIgnoreCase)
-                        .ToList();
-
-                    if (sorted.Count > pageIndex)
-                    {
-                        AppLogger.LogDebug($"[ComicArchiveHandler] Extracted page {pageIndex} for '{fileName}' via sequential stream in {seqSw.ElapsedMilliseconds}ms (Total: {sw.ElapsedMilliseconds}ms).");
-                        return sorted[pageIndex].Bytes;
-                    }
+                    AppLogger.LogDebug($"[ComicArchiveHandler] Extracted page {pageIndex} for '{fileName}' via sequential stream in {seqSw.ElapsedMilliseconds}ms (Total: {sw.ElapsedMilliseconds}ms).");
+                    return topEntries[pageIndex].Bytes;
                 }
             }
             catch (Exception ex)
