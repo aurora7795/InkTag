@@ -598,9 +598,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         try
         {
-            ProgressText = $"Rolling back batch '{LastBatchJob.BatchJobId}'...";
-            var backupService = new InkTag.Core.Backup.MetadataBackupService();
-            var report = backupService.RestoreBatchJob(LastBatchJob.BatchJobId);
+            string batchId = LastBatchJob.BatchJobId;
+            ProgressText = $"Rolling back batch '{batchId}'...";
+            var report = await Task.Run(() =>
+            {
+                var backupService = new InkTag.Core.Backup.MetadataBackupService();
+                return backupService.RestoreBatchJob(batchId);
+            });
 
             if (report.Failed == 0)
             {
@@ -1108,18 +1112,25 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 {
                     _ = Task.Run(async () =>
                     {
-                        var syncList = dirtyItems.Select(c => (c.FilePath, c.ToModel())).ToList();
-                        var syncService = new InkTag.Core.Komga.KomgaSyncService(settingsService);
-                        if (syncService.IsConfigured)
+                        try
                         {
-                            var report = await syncService.SyncMultipleComicsAsync(syncList);
-                            if (report.IsSuccess && (report.BooksAnalyzed > 0 || report.SeriesAnalyzed > 0))
+                            var syncList = dirtyItems.Select(c => (c.FilePath, c.ToModel())).ToList();
+                            var syncService = new InkTag.Core.Komga.KomgaSyncService(settingsService);
+                            if (syncService.IsConfigured)
                             {
-                                Dispatcher.UIThread.Post(() =>
+                                var report = await syncService.SyncMultipleComicsAsync(syncList);
+                                if (report.IsSuccess && (report.BooksAnalyzed > 0 || report.SeriesAnalyzed > 0))
                                 {
-                                    ProgressText = $"Saved & auto-synced with Komga (Refreshed {report.BooksAnalyzed} books).";
-                                });
+                                    Dispatcher.UIThread.Post(() =>
+                                    {
+                                        ProgressText = $"Saved & auto-synced with Komga (Refreshed {report.BooksAnalyzed} books).";
+                                    });
+                                }
                             }
+                        }
+                        catch (Exception ex)
+                        {
+                            InkTag.Core.Logging.AppLogger.LogWarning($"[MainWindowViewModel] Background Komga auto-sync failed: {ex.Message}");
                         }
                     });
                 }

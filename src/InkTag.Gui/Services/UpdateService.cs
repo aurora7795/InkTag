@@ -69,7 +69,9 @@ public static class UpdateService
             return parsedVer;
         }
 
-        return new Version(0, 10, 3);
+        return TryParseVersion(InkTag.Core.InkTagVersion.Current, out var fallbackVer)
+            ? fallbackVer
+            : new Version(0, 14, 1);
     }
 
     /// <summary>
