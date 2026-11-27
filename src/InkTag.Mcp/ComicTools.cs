@@ -712,7 +712,9 @@ public static class ComicTools
             success = restored,
             path,
             backupId,
-            message = "Metadata successfully restored from backup snapshot.",
+            message = restored
+                ? "Metadata successfully restored from backup snapshot."
+                : "Failed to restore metadata from backup snapshot.",
             currentMetadata = new
             {
                 title = metadata.Title,
