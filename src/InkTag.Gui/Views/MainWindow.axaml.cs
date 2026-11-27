@@ -472,10 +472,17 @@ public partial class MainWindow : Window
 
     private void NativeSeriesSearchWizard_Click(object? sender, EventArgs e) => SeriesSearchWizard_Click(sender, new RoutedEventArgs());
 
-    private void OpenAbout_Click(object? sender, RoutedEventArgs e)
+    private async void OpenAbout_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new AboutWindow();
-        dialog.ShowDialog(this);
+        try
+        {
+            var dialog = new AboutWindow();
+            await dialog.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            InkTag.Core.Logging.AppLogger.LogError("Failed to open About window.", ex);
+        }
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e)
@@ -486,8 +493,15 @@ public partial class MainWindow : Window
     private void NativeOpenFolder_Click(object? sender, EventArgs e) => OpenFolder_Click(sender, new RoutedEventArgs());
     private async void NativeSaveAll_Click(object? sender, EventArgs e)
     {
-        Focus();
-        if (DataContext is MainWindowViewModel vm) await vm.SaveAllCommand.ExecuteAsync(null);
+        try
+        {
+            Focus();
+            if (DataContext is MainWindowViewModel vm) await vm.SaveAllCommand.ExecuteAsync(null);
+        }
+        catch (Exception ex)
+        {
+            InkTag.Core.Logging.AppLogger.LogError("Failed to save all from native menu.", ex);
+        }
     }
     private void NativeExportCsv_Click(object? sender, EventArgs e) => ExportCsv_Click(sender, new RoutedEventArgs());
     private void NativeExit_Click(object? sender, EventArgs e) => Close();

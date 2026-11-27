@@ -183,12 +183,23 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void ClearCache_Click(object? sender, RoutedEventArgs e)
+    private async void ClearCache_Click(object? sender, RoutedEventArgs e)
     {
-        using var cache = new ScraperCacheService();
-        cache.Clear();
-        CacheStatusTextBlock.Text = "🗑️ Local response cache successfully cleared.";
-        CacheStatusTextBlock.Foreground = Avalonia.Media.Brushes.Cyan;
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var cache = new ScraperCacheService();
+                cache.Clear();
+            });
+            CacheStatusTextBlock.Text = "🗑️ Local response cache successfully cleared.";
+            CacheStatusTextBlock.Foreground = Avalonia.Media.Brushes.Cyan;
+        }
+        catch (Exception ex)
+        {
+            CacheStatusTextBlock.Text = $"❌ Failed to clear cache: {ex.Message}";
+            CacheStatusTextBlock.Foreground = Avalonia.Media.Brushes.OrangeRed;
+        }
     }
 
     private void OpenLogsFolder_Click(object? sender, RoutedEventArgs e)
@@ -199,13 +210,6 @@ public partial class SettingsWindow : Window
     private void ResetDefaults_Click(object? sender, RoutedEventArgs e)
     {
         var defaults = new AppSettings();
-
-        // Reset UI fields
-        MergePolicyComboBox.SelectedIndex = 0;
-        BulkAutoRenameCheckBox.IsChecked = defaults.BulkScrapeAutoRenameFiles;
-        RenameTemplateTextBox.Text = defaults.BulkScrapeRenameTemplate;
-        ClearLegacyZipCommentsCheckBox.IsChecked = defaults.ClearLegacyZipCommentsOnUpgrade;
-        ConfirmCbrConversionCheckBox.IsChecked = defaults.ConfirmCbrToCbzConversion;
 
         // General
         ThemeModeComboBox.SelectedIndex = (int)defaults.ThemeMode;

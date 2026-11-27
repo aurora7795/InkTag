@@ -27,10 +27,17 @@ public partial class AboutWindow : Window
         UpdateService.OpenUrlInBrowser("https://github.com/aurora7795/InkTag/graphs/contributors");
     }
 
-    private void OpenThirdPartyLicensesClick(object? sender, RoutedEventArgs e)
+    private async void OpenThirdPartyLicensesClick(object? sender, RoutedEventArgs e)
     {
-        var dialog = new ThirdPartyLicensesWindow();
-        dialog.ShowDialog(this);
+        try
+        {
+            var dialog = new ThirdPartyLicensesWindow();
+            await dialog.ShowDialog(this);
+        }
+        catch (System.Exception ex)
+        {
+            InkTag.Core.Logging.AppLogger.LogError("Failed to open Third-Party Licenses window.", ex);
+        }
     }
 
     private void CloseClick(object? sender, RoutedEventArgs e)
