@@ -924,6 +924,18 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <Grid ColumnDefinitions="*, Auto" Margin="0,4,0,4">
+                  <StackPanel Orientation="Horizontal" Spacing="8" Grid.Column="0">
+                    <Button Content="+ Add Rule" Command="{Binding AddBulkRuleCommand}" Padding="10,6" Background="{DynamicResource AppButtonBackgroundBrush}" Foreground="{DynamicResource AppTextPrimaryBrush}"/>
+                    <Button Content="Clear" Command="{Binding ClearBulkRulesCommand}" Padding="10,6" Background="{DynamicResource AppButtonBackgroundBrush}" Foreground="{DynamicResource AppTextPrimaryBrush}"/>
+                  </StackPanel>
+                  <Button Content="Apply Rules" Command="{Binding ApplyBulkRulesCommand}" Grid.Column="1" Padding="14,6" FontWeight="SemiBold" Background="{DynamicResource AppAccentBrush}" Foreground="{DynamicResource AppAccentForegroundBrush}"/>
+                </Grid>
+
+                <TextBlock Text="Tip: Applies all rules above to selected rows (or all visible rows if none are selected)." Foreground="{DynamicResource AppTextMutedBrush}" FontSize="11" TextWrapping="Wrap"/>
+
+                <Separator Background="{DynamicResource AppBorderBrush}" Margin="0,4"/>
+
                 <!-- Core Details Group -->
                 <TextBlock Text="Core Information" FontWeight="SemiBold" Foreground="#4EC9B0" FontSize="12"/>
                 <TextBlock Text="Title" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="11"/>

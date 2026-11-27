@@ -154,6 +154,22 @@ This file is the living ledger for tracking manual quality assurance activities,
   2. Verify local covers and remote thumbnails display cleanly and quickly on repeat opens.
 
 * **Expected Result:** No missing covers/thumbnails and no unbounded hash cache growth.
+### [Issue #28]: Bulk Edit Tab Rule Add, Clear, & Apply Controls
+* **Branch / Commit:** `fix/issue-28-bulk-edit-apply-rules`
+* **Date Added:** 2026-11-26
+* **Target Subsystems:** `InkTag.Gui` (`MainWindow.axaml`, `MainWindowViewModel.cs`)
+* **Environment / OS:** Windows / macOS / Linux
+* **Goal:** Verify users can add, clear, and apply `Bulk Edit` rules across selected or visible comic rows for any `ComicInfo` field.
+
+#### Manual Test Steps:
+- [ ] **Step 1 (Verify Bulk Edit Rule Application):**
+  1. Load a folder of comics in InkTag GUI and select 2 or more rows.
+  2. Switch to the **Bulk Edit** tab, select a field (e.g. `Publisher` or `Imprint`), choose `Set`, and enter a value.
+  3. Click **+ Add Rule** to add a second rule (e.g. `Year` -> `Set` -> `2024`).
+  4. Click **Apply Rules**.
+  5. Verify the selected rows update immediately in the grid and are marked `MODIFIED`.
+
+* **Expected Result:** All configured rules apply to the selected rows (or all visible rows if none are selected).
 * **Tester Notes:**
 
 ### [Issue #48]: Linux Context Menu Overlay and Blur Box Verification

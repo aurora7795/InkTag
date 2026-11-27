@@ -831,6 +831,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void ApplyBulkRules()
+    {
+        var targets = (_selectedComics.Any() ? _selectedComics : DisplayedComics.ToList())
+            .Where(c => !c.HasReadError).ToList();
+        if (!targets.Any() || !BulkEditRules.Any()) return;
+
+        foreach (var item in targets)
+        {
+            foreach (var rule in BulkEditRules)
+            {
+                item.ApplyBulkRule(rule);
+            }
+        }
+
+        ProgressText = $"Applied {BulkEditRules.Count} bulk edit rule(s) to {targets.Count} items.";
+    }
+
+    [RelayCommand]
     private void CancelScan()
     {
         if (IsLoading && _scanCts != null && !_scanCts.IsCancellationRequested)
