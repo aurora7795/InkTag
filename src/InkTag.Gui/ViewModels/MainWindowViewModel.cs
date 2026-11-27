@@ -783,6 +783,14 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(AutoTagButtonTooltip));
     }
 
+    public event Action? RequestSelectAll;
+
+    [RelayCommand]
+    private void SelectAll()
+    {
+        RequestSelectAll?.Invoke();
+    }
+
     [RelayCommand]
     private void AddBulkRule()
     {

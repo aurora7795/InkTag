@@ -139,7 +139,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,0" Spacing="4">
                   <TextBlock Text="➔" FontSize="16" Foreground="{DynamicResource AppTextMutedBrush}" HorizontalAlignment="Center"/>
                   <Border Background="#123B22" BorderBrush="#107C41" BorderThickness="1" CornerRadius="3" Padding="4,2"
-                          IsVisible="{Binding IsCoverMatchConfirmed}">
+                          IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock Text="MATCH" FontSize="9" Foreground="#4EC9B0" FontWeight="Bold" HorizontalAlignment="Center"/>
                   </Border>
                 </StackPanel>

@@ -46,6 +46,7 @@ public partial class MainWindow : Window
             return (result, dialog.DoNotAskAgain);
         };
         vm.PropertyChanged += Vm_PropertyChanged;
+        vm.RequestSelectAll += () => ComicsGrid.SelectAll();
 
         UpdateInspectorColumnWidth(vm.IsInspectorVisible);
         UpdateRailColumnWidth(vm.IsRailVisible);

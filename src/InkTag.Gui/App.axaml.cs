@@ -39,21 +39,35 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private void About_Click(object? sender, System.EventArgs e)
+    private async void About_Click(object? sender, System.EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        try
         {
-            var aboutWindow = new Views.AboutWindow();
-            aboutWindow.ShowDialog(desktop.MainWindow);
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var aboutWindow = new Views.AboutWindow();
+                await aboutWindow.ShowDialog(desktop.MainWindow);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Core.Logging.AppLogger.LogError("Failed to open About window.", ex);
         }
     }
 
-    private void Settings_Click(object? sender, System.EventArgs e)
+    private async void Settings_Click(object? sender, System.EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        try
         {
-            var settingsWindow = new Views.SettingsWindow();
-            settingsWindow.ShowDialog(desktop.MainWindow);
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var settingsWindow = new Views.SettingsWindow();
+                await settingsWindow.ShowDialog(desktop.MainWindow);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Core.Logging.AppLogger.LogError("Failed to open Settings window.", ex);
         }
     }
 }

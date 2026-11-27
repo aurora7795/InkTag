@@ -198,7 +198,7 @@ public static class UpdateService
         if (!response.IsSuccessStatusCode)
         {
             AppLogger.LogWarning($"GitHub Releases API returned status code: {response.StatusCode}");
-            return new UpdateCheckResult(UpdateStatusKind.UpToDate, null, "InkTag Desktop is up to date.");
+            return new UpdateCheckResult(UpdateStatusKind.Failed, null, $"Update check failed (GitHub API HTTP {(int)response.StatusCode}).");
         }
 
         string json = await response.Content.ReadAsStringAsync();
